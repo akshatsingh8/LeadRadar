@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "LeadRadar - Google Maps Lead Extractor",
+  "version": "1.0.2",
+  "description": "Discover Business Leads Instantly | Extract unlimited leads from Google Maps with one click. Powered by brandspiritlabs.com",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "sidePanel",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://www.google.com/maps/*",
+    "<all_urls>"
+  ],
+  "action": {
+    "default_title": "Google Maps Leads Scraper"
+  },
+  "side_panel": {
+    "default_path": "index.html"
+  },
+  "background": {
+    "service_worker": "assets/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.google.com/maps/*"
+      ],
+      "js": [
+        "assets/content.js"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "icons": {
+    "16": "icon-16.png",
+    "48": "icon-48.png",
+    "128": "icon-128.png"
+  }
+}

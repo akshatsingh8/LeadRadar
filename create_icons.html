@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Icon Creator - Transparent Background</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .preview-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .preview-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+        }
+
+        .preview-card h3 {
+            color: #495057;
+            font-size: 14px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .canvas-wrapper {
+            background-image: 
+                linear-gradient(45deg, #ddd 25%, transparent 25%),
+                linear-gradient(-45deg, #ddd 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #ddd 75%),
+                linear-gradient(-45deg, transparent 75%, #ddd 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            display: inline-block;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        canvas {
+            display: block;
+            image-rendering: crisp-edges;
+            image-rendering: pixelated;
+        }
+
+        .download-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .download-btn:active {
+            transform: translateY(0);
+        }
+
+        .download-all-btn {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 700;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .download-all-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(245, 87, 108, 0.4);
+        }
+
+        .download-all-btn:active {
+            transform: translateY(0);
+        }
+
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .info-box p {
+            color: #1976D2;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Extension Icon Creator</h1>
+        <p class="subtitle">Google Maps Leads Scraper - Transparent Background Icons</p>
+
+        <div class="info-box">
+            <p><strong>📌 Instructions:</strong> Click "Download All Icons" to save all three icon sizes (128x128, 48x48, 16x16) with transparent backgrounds. The icons feature a magnifying glass over a Google Maps pin with a data list inside.</p>
+        </div>
+
+        <div class="preview-section">
+            <div class="preview-card">
+                <h3>128x128 (Main Icon)</h3>
+                <div class="canvas-wrapper">
+                    <canvas id="canvas128"></canvas>
+                </div>
+                <button class="download-btn" onclick="downloadIcon('canvas128', 'icon-128.png')">Download 128x128</button>
+            </div>
+
+            <div class="preview-card">
+                <h3>48x48 (Medium)</h3>
+                <div class="canvas-wrapper">
+                    <canvas id="canvas48"></canvas>
+                </div>
+                <button class="download-btn" onclick="downloadIcon('canvas48', 'icon-48.png')">Download 48x48</button>
+            </div>
+
+            <div class="preview-card">
+                <h3>16x16 (Small)</h3>
+                <div class="canvas-wrapper">
+                    <canvas id="canvas16"></canvas>
+                </div>
+                <button class="download-btn" onclick="downloadIcon('canvas16', 'icon-16.png')">Download 16x16</button>
+            </div>
+        </div>
+
+        <button class="download-all-btn" onclick="downloadAllIcons()">⬇️ Download All Icons</button>
+    </div>
+
+    <script>
+        function drawIcon(canvas, size) {
+            const ctx = canvas.getContext('2d');
+            canvas.width = size;
+            canvas.height = size;
+
+            // Clear canvas (transparent background)
+            ctx.clearRect(0, 0, size, size);
+
+            // Calculate sizes based on canvas size
+            const scale = size / 128;
+            const pinWidth = 50 * scale;
+            const pinHeight = 70 * scale;
+            const pinX = size * 0.55;
+            const pinY = size * 0.4;
+
+            // Draw Google Maps pin (blue gradient)
+            const pinGradient = ctx.createLinearGradient(pinX - pinWidth/2, pinY - pinHeight, pinX + pinWidth/2, pinY);
+            pinGradient.addColorStop(0, '#4A9EFF');
+            pinGradient.addColorStop(1, '#1976D2');
+
+            ctx.fillStyle = pinGradient;
+            ctx.beginPath();
+            
+            // Pin shape
+            ctx.arc(pinX, pinY - pinHeight * 0.4, pinWidth * 0.4, 0, Math.PI * 2);
+            ctx.moveTo(pinX - pinWidth * 0.25, pinY - pinHeight * 0.25);
+            ctx.lineTo(pinX, pinY);
+            ctx.lineTo(pinX + pinWidth * 0.25, pinY - pinHeight * 0.25);
+            ctx.closePath();
+            ctx.fill();
+
+            // Pin inner circle (white)
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(pinX, pinY - pinHeight * 0.4, pinWidth * 0.15, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Draw magnifying glass
+            const glassRadius = 35 * scale;
+            const glassX = size * 0.35;
+            const glassY = size * 0.6;
+            const handleLength = 25 * scale;
+            const handleWidth = 10 * scale;
+
+            // Magnifying glass handle
+            ctx.fillStyle = '#F5F5F5';
+            ctx.strokeStyle = '#E0E0E0';
+            ctx.lineWidth = 2 * scale;
+            ctx.beginPath();
+            ctx.moveTo(glassX - glassRadius * 0.6, glassY + glassRadius * 0.6);
+            ctx.lineTo(glassX - glassRadius * 0.6 - handleLength * 0.7, glassY + glassRadius * 0.6 + handleLength * 0.7);
+            ctx.lineWidth = handleWidth;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+
+            // Magnifying glass circle (white with border)
+            ctx.fillStyle = 'white';
+            ctx.strokeStyle = '#E0E0E0';
+            ctx.lineWidth = 3 * scale;
+            ctx.beginPath();
+            ctx.arc(glassX, glassY, glassRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Data list icon inside magnifying glass
+            const listItemHeight = 5 * scale;
+            const listItemWidth = 20 * scale;
+            const listItemSpacing = 6 * scale;
+            const dotRadius = 2 * scale;
+
+            ctx.fillStyle = '#1976D2';
+            for (let i = 0; i < 3; i++) {
+                const y = glassY - listItemSpacing + i * listItemSpacing;
+                
+                // Dot
+                ctx.beginPath();
+                ctx.arc(glassX - listItemWidth/2, y, dotRadius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Line
+                ctx.fillRect(glassX - listItemWidth/2 + dotRadius * 2, y - listItemHeight/2, listItemWidth - dotRadius * 2, listItemHeight);
+            }
+        }
+
+        function downloadIcon(canvasId, filename) {
+            const canvas = document.getElementById(canvasId);
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        function downloadAllIcons() {
+            setTimeout(() => downloadIcon('canvas128', 'icon-128.png'), 0);
+            setTimeout(() => downloadIcon('canvas48', 'icon-48.png'), 300);
+            setTimeout(() => downloadIcon('canvas16', 'icon-16.png'), 600);
+        }
+
+        // Initialize all canvases
+        window.onload = () => {
+            drawIcon(document.getElementById('canvas128'), 128);
+            drawIcon(document.getElementById('canvas48'), 48);
+            drawIcon(document.getElementById('canvas16'), 16);
+        };
+    </script>
+</body>
+</html>
