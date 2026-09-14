@@ -13,20 +13,28 @@ export const extractLeads = () => {
         }
     }
 
-    const feed = document.querySelector('div[role="feed"]');
-    if (!feed) return leads;
+    // Feed resolution with multiple Google Maps DOM fallbacks
+    let feed = document.querySelector('div[role="feed"], div[aria-label*="Results for" i], div.m6QErb[aria-label*="Results" i]');
+    let items = feed ? Array.from(feed.querySelectorAll('div[role="article"], div.Nv2PK, .Nv2PK')) : [];
 
-    const items = Array.from(feed.querySelectorAll('div[role="article"], div.Nv2PK'));
+    // Fallback: If feed querySelector didn't match, query documents directly
+    if (items.length === 0) {
+        const potentialItems = Array.from(document.querySelectorAll('div[role="article"], div.Nv2PK, a.hfpxzc'));
+        items = Array.from(new Set(potentialItems.map(el => el.closest('.Nv2PK, div[role="article"]') || el)));
+    }
+
+    if (items.length === 0) return leads;
+
     items.forEach(item => {
         try {
-            const nameElement = item.querySelector('.qBF1Pd, .fontHeadlineSmall');
+            const nameElement = item.querySelector('.qBF1Pd, .fontHeadlineSmall, [class*="fontHeadline"]');
             const data = { 
-                name: nameElement ? nameElement.innerText : 'Unknown',
+                name: nameElement ? nameElement.innerText.trim() : 'Unknown',
                 keyword: searchKeyword,
                 scrapedAt: new Date().toISOString()
             };
 
-            const link = item.querySelector('a[href*="/maps/place/"]');
+            const link = item.querySelector('a[href*="/maps/place/"], a.hfpxzc, a[href*="cid="]');
             if (link) data.url = link.href;
 
             if (data.name === 'Unknown' || !data.url) return;
@@ -110,9 +118,25 @@ export const extractLeads = () => {
                 }
             });
 
-            // 4. Website (Direct DOM Link)
-            const webLink = item.querySelector('a[data-value="Website"]');
-            if (webLink) data.website = webLink.href;
+            // 4. Website (Direct DOM Link with fallbacks & redirect unwrapping)
+            const webLink = item.querySelector('a[data-value="Website"], a[aria-label*="website" i], a[data-tooltip*="website" i]');
+            if (webLink && webLink.href) {
+                let href = webLink.href;
+                if (href.includes('google.com/url?') || href.includes('google.com/url/')) {
+                    try {
+                        const parsedUrl = new URL(href);
+                        const target = parsedUrl.searchParams.get('q') || parsedUrl.searchParams.get('url');
+                        if (target) href = target;
+                    } catch {
+                        // Keep original href if URL parsing fails
+                    }
+                }
+                data.website = href;
+            }
+
+            // Immediate DOM fallback so leads have address and phone even before or without AI
+            data.address = addressSnippet || (subInfoLines[1]?.innerText !== data.category ? (subInfoLines[1]?.innerText || "") : "");
+            data.phone = phoneSnippet || "";
 
             // --- SURGICAL AI PAYLOAD (Only for Cleaning) ---
             data.optimizedText = `ID_REF: ${data.url}\nADDR_TAG: ${addressSnippet || subInfoLines[1]?.innerText || "N/A"}\nPHONE_TAG: ${phoneSnippet || subInfoLines[2]?.innerText || "N/A"}`;
