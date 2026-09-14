@@ -7,97 +7,139 @@ let scrapedLeads = new Map();
 let startTime = null;
 let pageCount = 1;
 
-// Load existing state
-chrome.storage.local.get(['allLeads', 'isScraping', 'stats'], (result) => {
-    if (result.allLeads && Array.isArray(result.allLeads)) {
-        result.allLeads.forEach(lead => {
-            const key = lead.url || lead.name;
-            if (key) scrapedLeads.set(key, lead);
-        });
+// Context liveness guard to prevent "Extension context invalidated" errors
+const isContextValid = () => {
+    try {
+        return typeof chrome !== 'undefined' && Boolean(chrome?.runtime?.id);
+    } catch {
+        return false;
     }
-});
+};
+
+// Load existing state safely
+if (isContextValid()) {
+    try {
+        chrome.storage.local.get(['allLeads', 'isScraping', 'stats'], (result) => {
+            if (chrome.runtime?.lastError || !isContextValid()) return;
+            if (result?.allLeads && Array.isArray(result.allLeads)) {
+                result.allLeads.forEach(lead => {
+                    const key = lead.url || lead.name;
+                    if (key) scrapedLeads.set(key, lead);
+                });
+            }
+        });
+    } catch {
+        // Suppress initial context check failure
+    }
+}
 
 const safeSendMessage = (message, callback) => {
-    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id) {
-        try {
-            chrome.runtime.sendMessage(message, callback);
-            return true;
-        } catch (e) {
-            console.warn('[LeadRadar] Runtime disconnected:', e.message);
-            isScraping = false;
-        }
-    } else {
+    if (!isContextValid()) {
         isScraping = false;
+        return false;
     }
-    return false;
+    try {
+        const p = chrome.runtime.sendMessage(message, (res) => {
+            if (chrome.runtime?.lastError) {
+                // Suppress context invalidation or closed port errors
+            }
+            if (callback) callback(res);
+        });
+        if (p && typeof p.catch === 'function') {
+            p.catch(() => {
+                isScraping = false;
+            });
+        }
+        return true;
+    } catch {
+        isScraping = false;
+        return false;
+    }
 };
 
 let activeSettings = { autoScroll: true, autoNextPage: true, humanBehavior: true };
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === 'START_SCRAPING') {
-        if (request.settings) {
-            activeSettings = { ...activeSettings, ...request.settings };
-        }
-        if (!isScraping) {
-            isScraping = true;
-            startTime = Date.now();
-            scrapeLoop(activeSettings);
-        }
-        sendResponse({ success: true });
+if (isContextValid()) {
+    try {
+        chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+            if (request.action === 'START_SCRAPING') {
+                if (request.settings) {
+                    activeSettings = { ...activeSettings, ...request.settings };
+                }
+                if (!isScraping) {
+                    isScraping = true;
+                    startTime = Date.now();
+                    scrapeLoop(activeSettings);
+                }
+                sendResponse({ success: true });
+            }
+            else if (request.action === 'SETTINGS_UPDATED') {
+                if (request.settings) {
+                    activeSettings = { ...activeSettings, ...request.settings };
+                }
+                sendResponse({ success: true });
+            }
+            else if (request.action === 'STOP_SCRAPING') {
+                stopScraping();
+                sendResponse({ success: true });
+            }
+            else if (request.action === 'EXPORT_CSV') {
+                sendResponse({ success: true });
+            }
+            else if (request.action === 'CLEAR_DATA') {
+                scrapedLeads.clear();
+                pageCount = 1;
+                startTime = Date.now();
+                sendResponse({ success: true });
+            }
+            return false;
+        });
+    } catch {
+        // Suppress listener registration error if context became invalid
     }
-    else if (request.action === 'SETTINGS_UPDATED') {
-        if (request.settings) {
-            activeSettings = { ...activeSettings, ...request.settings };
-        }
-        sendResponse({ success: true });
-    }
-    else if (request.action === 'STOP_SCRAPING') {
-        stopScraping();
-        sendResponse({ success: true });
-    }
-    else if (request.action === 'EXPORT_CSV') {
-        // Redundant as of v1.0.3 but kept for backward compatibility during rollout
-        sendResponse({ success: true });
-    }
-    else if (request.action === 'CLEAR_DATA') {
-        scrapedLeads.clear();
-        pageCount = 1;
-        startTime = Date.now();
-        sendResponse({ success: true });
-    }
-    return false;
-});
+}
 
 function stopScraping() {
     isScraping = false;
     safeSendMessage({ action: 'SCRAPING_STOPPED' });
-    chrome.storage.local.set({ isScraping: false });
+    if (isContextValid()) {
+        try {
+            chrome.storage.local.set({ isScraping: false });
+        } catch {}
+    }
     saveHistory();
 }
 
 function saveHistory() {
-    chrome.storage.local.get(['history'], (result) => {
-        const history = result.history || [];
-        const leads = Array.from(scrapedLeads.values());
-        if (leads.length === 0) return;
+    if (!isContextValid()) return;
+    try {
+        chrome.storage.local.get(['history'], (result) => {
+            if (chrome.runtime?.lastError || !isContextValid()) return;
+            const history = result?.history || [];
+            const leads = Array.from(scrapedLeads.values());
+            if (leads.length === 0) return;
 
-        const keyword = leads[0].keyword || "Unknown";
-        const entry = {
-            timestamp: Date.now(),
-            keyword: keyword,
-            count: leads.length
-        };
+            const keyword = leads[0].keyword || "Unknown";
+            const entry = {
+                timestamp: Date.now(),
+                keyword: keyword,
+                count: leads.length
+            };
 
-        const last = history[history.length - 1];
-        if (last && last.keyword === keyword && last.count === entry.count && (entry.timestamp - last.timestamp < 60000)) {
-            history[history.length - 1] = entry;
-        } else {
-            history.push(entry);
-        }
+            const last = history[history.length - 1];
+            if (last && last.keyword === keyword && last.count === entry.count && (entry.timestamp - last.timestamp < 60000)) {
+                history[history.length - 1] = entry;
+            } else {
+                history.push(entry);
+            }
 
-        chrome.storage.local.set({ history: history });
-    });
+            if (isContextValid()) {
+                try {
+                    chrome.storage.local.set({ history: history });
+                } catch {}
+            }
+        });
+    } catch {}
 }
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -111,51 +153,77 @@ function formatTime(ms) {
 
 
 async function syncData(newlyFoundLeads = []) {
-    // If no new leads, just update stats
+    if (!isContextValid()) {
+        isScraping = false;
+        return;
+    }
+
     const stats = {
         leads: scrapedLeads.size,
         pages: pageCount,
         time: formatTime(startTime ? Date.now() - startTime : 0)
     };
 
-    if (newlyFoundLeads.length > 0) {
-        const storage = await new Promise(r => chrome.storage.local.get(['allLeads'], r));
-        let existingLeads = storage.allLeads || [];
-        
-        newlyFoundLeads.forEach(lead => {
-            const key = lead.url || lead.name;
-            const index = existingLeads.findIndex(l => (l.url || l.name) === key);
-            if (index === -1) {
-                existingLeads.push(lead);
-            } else {
-                // Merge if updating existing
-                existingLeads[index] = { ...existingLeads[index], ...lead };
-            }
-        });
-
-        chrome.storage.local.set({ 
-            allLeads: existingLeads,
-            stats: stats
-        });
-    } else {
-        chrome.storage.local.set({ stats: stats });
-    }
-
     try {
-        chrome.runtime.sendMessage({
-            action: 'UPDATE_STATS',
-            stats: stats
-        });
+        if (newlyFoundLeads.length > 0) {
+            const storage = await new Promise(r => {
+                if (!isContextValid()) return r({});
+                try {
+                    chrome.storage.local.get(['allLeads'], (res) => {
+                        if (chrome.runtime?.lastError) return r({});
+                        r(res || {});
+                    });
+                } catch {
+                    r({});
+                }
+            });
+            let existingLeads = storage?.allLeads || [];
+            
+            newlyFoundLeads.forEach(lead => {
+                const key = lead.url || lead.name;
+                const index = existingLeads.findIndex(l => (l.url || l.name) === key);
+                if (index === -1) {
+                    existingLeads.push(lead);
+                } else {
+                    // Merge if updating existing
+                    existingLeads[index] = { ...existingLeads[index], ...lead };
+                }
+            });
+
+            if (isContextValid()) {
+                try {
+                    chrome.storage.local.set({ 
+                        allLeads: existingLeads,
+                        stats: stats
+                    });
+                } catch {}
+            }
+        } else {
+            if (isContextValid()) {
+                try {
+                    chrome.storage.local.set({ stats: stats });
+                } catch {}
+            }
+        }
     } catch {
-        // Optional catch binding
+        isScraping = false;
     }
+
+    safeSendMessage({
+        action: 'UPDATE_STATS',
+        stats: stats
+    });
 }
 
 async function scrapeLoop(initialSettings) {
     if (initialSettings) {
         activeSettings = { ...activeSettings, ...initialSettings };
     }
-    chrome.storage.local.set({ isScraping: true });
+    if (isContextValid()) {
+        try {
+            chrome.storage.local.set({ isScraping: true });
+        } catch {}
+    }
     
     // Send initial heartbeat log
     safeSendMessage({
@@ -164,6 +232,11 @@ async function scrapeLoop(initialSettings) {
     });
 
     while (isScraping) {
+        if (!isContextValid()) {
+            isScraping = false;
+            break;
+        }
+
         if (activeSettings.autoScroll) {
             const scrolled = scrollFeed();
             if (scrolled) {
@@ -172,6 +245,11 @@ async function scrapeLoop(initialSettings) {
             } else {
                 await sleep(500);
             }
+        }
+
+        if (!isContextValid()) {
+            isScraping = false;
+            break;
         }
 
         const newLeads = extractLeads();
@@ -190,10 +268,20 @@ async function scrapeLoop(initialSettings) {
             }
         });
 
+        if (!isContextValid()) {
+            isScraping = false;
+            break;
+        }
+
         if (isScraping && newlyFoundLeads.length > 0) {
-            syncData(newlyFoundLeads);
+            await syncData(newlyFoundLeads);
         } else if (isScraping) {
-            syncData([]); // Just updates stats
+            await syncData([]); // Just updates stats
+        }
+
+        if (!isContextValid()) {
+            isScraping = false;
+            break;
         }
 
         if (activeSettings.autoNextPage && hasReachedEnd()) {

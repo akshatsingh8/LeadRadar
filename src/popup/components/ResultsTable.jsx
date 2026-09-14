@@ -1,15 +1,30 @@
 import React, { useState } from 'react';
-import { ArrowUpDown, Search, Copy, Trash2, Mail, Linkedin, Globe, MapPin, Phone, Download } from 'lucide-react';
+import {
+    ArrowUpDown,
+    Search,
+    Copy,
+    Trash2,
+    Mail,
+    Linkedin,
+    Facebook,
+    Instagram,
+    Twitter,
+    Globe,
+    MapPin,
+    Phone,
+    Download,
+    Star
+} from 'lucide-react';
 
 function SortHeader({ field, sortField, onSort, children }) {
     return (
         <th
-            className="p-3 font-semibold border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors select-none text-left min-w-[120px]"
+            className="p-2.5 font-bold border-b border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors select-none text-left"
             onClick={() => onSort(field)}
         >
             <div className="flex items-center gap-1">
-                {children}
-                <ArrowUpDown size={12} className={`opacity-50 ${sortField === field ? 'opacity-100 text-blue-500' : ''}`} />
+                <span>{children}</span>
+                <ArrowUpDown size={11} className={`opacity-40 ${sortField === field ? 'opacity-100 text-blue-600 dark:text-blue-400' : ''}`} />
             </div>
         </th>
     );
@@ -52,143 +67,159 @@ export default function ResultsTable({ leads, onCopy, onClear, onExport }) {
     });
 
     return (
-        <div className="flex flex-col h-full bg-white dark:bg-gray-900 overflow-hidden">
-            {/* Toolbar */}
-            <div className="p-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-black flex gap-2 items-center flex-wrap">
-                <div className="flex-1 min-w-[200px] relative">
-                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900 overflow-hidden">
+            {/* Clean Light Toolbar */}
+            <div className="p-2.5 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex gap-2 items-center flex-wrap">
+                <div className="flex-1 min-w-[160px] relative">
+                    <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                         type="text"
-                        placeholder="Filter all fields..."
-                        className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-all"
+                        placeholder="Search leads..."
+                        className="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:border-blue-500 transition-all shadow-2xs"
                         value={filter}
                         onChange={(e) => setFilter(e.target.value)}
                     />
                 </div>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-1.5">
                     {onExport && (
                         <button
                             onClick={() => onExport(sortedLeads)}
                             disabled={sortedLeads.length === 0}
-                            className="px-3 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md shadow-sm transition-colors flex items-center gap-2"
-                            title="Export to CSV"
+                            className="px-2.5 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg shadow-2xs transition-colors flex items-center gap-1.5"
+                            title="Export CSV"
                         >
-                            <Download size={16} /> Export CSV
+                            <Download size={13} />
+                            <span>Export</span>
                         </button>
                     )}
                     <button
                         onClick={() => onCopy(sortedLeads)}
                         disabled={sortedLeads.length === 0}
-                        className="px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md shadow-sm transition-colors flex items-center gap-2"
+                        className="px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-200 dark:border-slate-700 rounded-lg shadow-2xs transition-colors flex items-center gap-1.5"
                         title="Copy to Clipboard"
                     >
-                        <Copy size={16} /> Copy
+                        <Copy size={13} />
+                        <span>Copy</span>
                     </button>
                     <button
                         onClick={onClear}
                         disabled={leads.length === 0}
-                        className="px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 disabled:opacity-50 disabled:cursor-not-allowed rounded-md border border-red-200 dark:border-red-900/50 transition-colors flex items-center gap-2"
+                        className="px-2.5 py-1.5 text-xs font-medium text-rose-600 dark:text-rose-400 bg-rose-50/80 dark:bg-rose-950/30 hover:bg-rose-100 disabled:opacity-40 disabled:cursor-not-allowed border border-rose-200/80 dark:border-rose-900/40 rounded-lg transition-colors flex items-center gap-1.5"
                         title="Clear Data"
                     >
-                        <Trash2 size={16} /> Clear
+                        <Trash2 size={13} />
+                        <span>Clear</span>
                     </button>
                 </div>
             </div>
 
             {/* Table */}
-            <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900">
-                <table className="w-full text-sm border-collapse text-left whitespace-nowrap">
-                    <thead className="bg-white dark:bg-gray-950 sticky top-0 shadow-sm text-gray-700 dark:text-gray-300 z-10">
+            <div className="flex-1 overflow-auto bg-white dark:bg-slate-900">
+                <table className="w-full text-xs border-collapse text-left whitespace-nowrap">
+                    <thead className="bg-slate-50/95 dark:bg-slate-800/95 sticky top-0 shadow-2xs text-slate-500 dark:text-slate-400 text-[10px] uppercase tracking-wider font-bold z-10 border-b border-slate-200 dark:border-slate-700">
                         <tr>
-                            <SortHeader field="name" sortField={sortField} onSort={handleSort}>Business Name</SortHeader>
+                            <SortHeader field="name" sortField={sortField} onSort={handleSort}>Business</SortHeader>
                             <SortHeader field="city" sortField={sortField} onSort={handleSort}>Location</SortHeader>
                             <SortHeader field="category" sortField={sortField} onSort={handleSort}>Category</SortHeader>
-                            <SortHeader field="phone" sortField={sortField} onSort={handleSort}>Contact</SortHeader>
+                            <SortHeader field="phone" sortField={sortField} onSort={handleSort}>Phone</SortHeader>
                             <SortHeader field="email" sortField={sortField} onSort={handleSort}>Email</SortHeader>
-                            <SortHeader field="websitePhone" sortField={sortField} onSort={handleSort}>Website Phone</SortHeader>
+                            <SortHeader field="websitePhone" sortField={sortField} onSort={handleSort}>Web Phone</SortHeader>
                             <SortHeader field="rating" sortField={sortField} onSort={handleSort}>Rating</SortHeader>
-                            <th className="p-3 font-semibold border-b border-gray-200 dark:border-gray-700 text-left">Socials & Web</th>
+                            <th className="p-2.5 font-bold border-b border-slate-200 dark:border-slate-700 text-left">Links</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-800 bg-white dark:bg-gray-900/50">
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 bg-white dark:bg-slate-900">
                         {sortedLeads.map((lead, idx) => (
-                            <tr key={idx} className="hover:bg-blue-50 dark:hover:bg-gray-800 transition-colors group">
-                                <td className="p-3 max-w-[200px]" title={lead.name}>
-                                    <div className="font-medium text-gray-900 dark:text-gray-100 truncate">{lead.name}</div>
-                                    <div className="text-[10px] text-gray-500 truncate">{lead.address}</div>
+                            <tr key={idx} className="hover:bg-blue-50/40 dark:hover:bg-slate-800/50 transition-colors">
+                                <td className="p-2.5 max-w-[190px]" title={lead.name}>
+                                    <div className="font-semibold text-slate-900 dark:text-slate-100 truncate">{lead.name}</div>
+                                    <div className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{lead.address}</div>
                                 </td>
-                                <td className="p-3 text-gray-700 dark:text-gray-300">
-                                    {lead.city ? `${lead.city}, ${lead.state || ''}` : <span className="text-gray-400 italic text-xs">Parsing...</span>}
+                                <td className="p-2.5 text-slate-600 dark:text-slate-300">
+                                    {lead.city ? `${lead.city}${lead.state ? `, ${lead.state}` : ''}` : <span className="text-slate-300 dark:text-slate-600">-</span>}
                                 </td>
-                                <td className="p-3 max-w-[150px] truncate">
-                                    <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-[10px] text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
-                                        {lead.category || 'N/A'}
+                                <td className="p-2.5 max-w-[140px] truncate">
+                                    <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-[10px] font-medium text-slate-600 dark:text-slate-400 border border-slate-200/70 dark:border-slate-700/70">
+                                        {lead.category || 'Business'}
                                     </span>
                                 </td>
-                                <td className="p-3 text-gray-700 dark:text-gray-300">
-                                    <div className="flex flex-col gap-0.5">
-                                        {lead.phone && <div className="flex items-center gap-1"><Phone size={10} className="text-gray-400"/> {lead.phone}</div>}
-                                        {lead.mobile && <div className="flex items-center gap-1 text-blue-500 font-bold"><Phone size={10} /> {lead.mobile}</div>}
-                                        {!lead.phone && !lead.mobile && '-'}
-                                    </div>
+                                <td className="p-2.5 text-slate-700 dark:text-slate-300 font-mono text-[11px]">
+                                    {lead.phone ? (
+                                        <div className="flex items-center gap-1">
+                                            <Phone size={11} className="text-slate-400 shrink-0" />
+                                            <span>{lead.phone}</span>
+                                        </div>
+                                    ) : lead.mobile ? (
+                                        <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400 font-bold">
+                                            <Phone size={11} className="shrink-0" />
+                                            <span>{lead.mobile}</span>
+                                        </div>
+                                    ) : (
+                                        <span className="text-slate-300 dark:text-slate-600">-</span>
+                                    )}
                                 </td>
-                                <td className="p-3 max-w-[180px] truncate text-gray-700 dark:text-gray-300">
+                                <td className="p-2.5 max-w-[170px] truncate text-slate-700 dark:text-slate-300">
                                     {lead.email || lead.emails ? (
-                                        <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
-                                            <Mail size={14} /> 
-                                            <span className="truncate font-semibold">{lead.email || lead.emails}</span>
+                                        <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-medium">
+                                            <Mail size={12} className="shrink-0" />
+                                            <span className="truncate">{lead.email || lead.emails}</span>
                                         </div>
                                     ) : lead.website ? (
-                                        <span className="text-gray-400 italic text-[10px]">{lead.enriched ? 'Not found' : 'Searching...'}</span>
+                                        <span className="text-slate-400 dark:text-slate-500 text-[10px] italic">
+                                            {lead.enriched ? 'Not found' : 'Searching...'}
+                                        </span>
                                     ) : (
-                                        <span className="text-gray-400 text-xs">-</span>
+                                        <span className="text-slate-300 dark:text-slate-600">-</span>
                                     )}
                                 </td>
-                                <td className="p-3 truncate text-gray-700 dark:text-gray-300">
+                                <td className="p-2.5 truncate text-slate-700 dark:text-slate-300 font-mono text-[11px]">
                                     {lead.websitePhone ? (
-                                        <div className="flex items-center gap-1">
-                                            <Phone size={12} className="text-green-500" />
-                                            <span className="font-medium text-green-600 dark:text-green-400">{lead.websitePhone}</span>
+                                        <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+                                            <Phone size={11} className="shrink-0" />
+                                            <span>{lead.websitePhone}</span>
                                         </div>
                                     ) : (
-                                        <span className="text-gray-400 text-xs">-</span>
+                                        <span className="text-slate-300 dark:text-slate-600">-</span>
                                     )}
                                 </td>
-                                <td className="p-3">
+                                <td className="p-2.5">
                                     {lead.rating ? (
-                                        <div className="flex items-center gap-1 font-bold text-gray-900 dark:text-gray-100">
-                                            <span>⭐ {lead.rating}</span>
-                                            {lead.reviews ? (
-                                                <span className="text-[10px] text-gray-500 font-normal">({lead.reviews})</span>
-                                            ) : null}
+                                        <div className="flex items-center gap-1 font-bold text-slate-800 dark:text-slate-200">
+                                            <Star size={11} className="text-amber-500 fill-amber-400 shrink-0" />
+                                            <span>{lead.rating}</span>
+                                            {lead.reviews && (
+                                                <span className="text-[10px] text-slate-400 font-normal">({lead.reviews})</span>
+                                            )}
                                         </div>
-                                    ) : '-'}
+                                    ) : (
+                                        <span className="text-slate-300 dark:text-slate-600">-</span>
+                                    )}
                                 </td>
-                                <td className="p-3">
-                                    <div className="flex items-center gap-3">
+                                <td className="p-2.5">
+                                    <div className="flex items-center gap-2">
                                         {lead.website && (
-                                            <a href={lead.website} target="_blank" rel="noreferrer" title={lead.website} className="text-gray-400 hover:text-blue-500 transition-colors">
-                                                <Globe size={18} />
+                                            <a href={lead.website} target="_blank" rel="noreferrer" title={lead.website} className="text-slate-400 hover:text-blue-600 transition-colors">
+                                                <Globe size={14} />
                                             </a>
                                         )}
                                         {lead.linkedin && (
-                                            <a href={lead.linkedin} target="_blank" rel="noreferrer" title="LinkedIn Found" className="text-gray-400 hover:text-blue-600 transition-colors">
-                                                <Linkedin size={18} />
+                                            <a href={lead.linkedin} target="_blank" rel="noreferrer" title="LinkedIn" className="text-slate-400 hover:text-[#0a66c2] transition-colors">
+                                                <Linkedin size={14} />
                                             </a>
                                         )}
                                         {lead.facebook && (
-                                            <a href={lead.facebook} target="_blank" rel="noreferrer" title="Facebook Found" className="text-gray-400 hover:text-blue-600 transition-colors">
-                                                <div className="w-[18px] h-[18px] flex items-center justify-center font-bold font-serif">f</div>
+                                            <a href={lead.facebook} target="_blank" rel="noreferrer" title="Facebook" className="text-slate-400 hover:text-[#1877f2] transition-colors">
+                                                <Facebook size={14} />
                                             </a>
                                         )}
                                         {lead.instagram && (
-                                            <a href={lead.instagram} target="_blank" rel="noreferrer" title="Instagram Found" className="text-gray-400 hover:text-pink-600 transition-colors">
-                                                <div className="w-[18px] h-[18px] flex items-center justify-center font-bold">ig</div>
+                                            <a href={lead.instagram} target="_blank" rel="noreferrer" title="Instagram" className="text-slate-400 hover:text-[#e4405f] transition-colors">
+                                                <Instagram size={14} />
                                             </a>
                                         )}
                                         {(lead.twitter || lead.twitter_x) && (
-                                            <a href={lead.twitter || lead.twitter_x} target="_blank" rel="noreferrer" title="X/Twitter Found" className="text-gray-400 hover:text-blue-400 transition-colors">
-                                                <div className="w-[18px] h-[18px] flex items-center justify-center font-bold text-xs">𝕏</div>
+                                            <a href={lead.twitter || lead.twitter_x} target="_blank" rel="noreferrer" title="X / Twitter" className="text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+                                                <Twitter size={14} />
                                             </a>
                                         )}
                                     </div>
@@ -197,10 +228,10 @@ export default function ResultsTable({ leads, onCopy, onClear, onExport }) {
                         ))}
                         {sortedLeads.length === 0 && (
                             <tr>
-                                <td colSpan="8" className="p-12 text-center text-gray-500 dark:text-gray-400">
-                                    <div className="flex flex-col items-center gap-3">
-                                        <MapPin size={32} className="opacity-20" />
-                                        <p>{leads.length === 0 ? 'No leads scraped yet. Start a search on Google Maps.' : 'No results match your filter.'}</p>
+                                <td colSpan="8" className="p-12 text-center text-slate-400 dark:text-slate-500">
+                                    <div className="flex flex-col items-center gap-2">
+                                        <MapPin size={28} className="text-slate-300 dark:text-slate-700" />
+                                        <p className="text-xs font-medium">{leads.length === 0 ? 'No leads extracted yet. Start a search on Google Maps.' : 'No results match your search filter.'}</p>
                                     </div>
                                 </td>
                             </tr>
@@ -208,9 +239,9 @@ export default function ResultsTable({ leads, onCopy, onClear, onExport }) {
                     </tbody>
                 </table>
             </div>
-            <div className="p-3 bg-white dark:bg-gray-950 text-xs font-medium text-gray-500 dark:text-gray-400 flex justify-between items-center border-t border-gray-200 dark:border-gray-800">
-                <span>Showing {sortedLeads.length} entries</span>
-                <span>Enriched Pro Data</span>
+            <div className="p-2.5 bg-slate-50 dark:bg-slate-900 text-[11px] font-medium text-slate-500 dark:text-slate-400 flex justify-between items-center border-t border-slate-200 dark:border-slate-800">
+                <span>{sortedLeads.length} leads displayed</span>
+                <span className="font-semibold text-slate-400">LeadRadar</span>
             </div>
         </div>
     );

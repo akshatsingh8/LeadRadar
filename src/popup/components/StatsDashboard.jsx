@@ -3,50 +3,63 @@ import { Users, FileText, Clock } from 'lucide-react';
 
 export default function StatsDashboard({ stats }) {
     return (
-        <div className="grid grid-cols-3 gap-3 p-4 bg-white dark:bg-transparent">
+        <div className="grid grid-cols-3 gap-2.5 p-4 pb-3">
             <StatCard
                 label="Leads"
                 value={stats.leads}
                 icon={Users}
-                lightBg="bg-emerald-50"
-                lightBorder="border-emerald-200"
-                lightText="text-emerald-800"
-                lightIcon="text-emerald-600"
-                darkColor="bg-green-900/40 text-green-300 border-green-700"
+                accent="blue"
             />
             <StatCard
                 label="Pages"
                 value={stats.pages}
                 icon={FileText}
-                lightBg="bg-blue-50"
-                lightBorder="border-blue-200"
-                lightText="text-blue-800"
-                lightIcon="text-blue-600"
-                darkColor="bg-blue-900/40 text-blue-300 border-blue-700"
+                accent="indigo"
             />
             <StatCard
                 label="Time"
                 value={stats.time}
                 icon={Clock}
-                lightBg="bg-orange-50"
-                lightBorder="border-orange-200"
-                lightText="text-orange-800"
-                lightIcon="text-orange-600"
-                darkColor="bg-orange-900/40 text-orange-300 border-orange-700"
+                accent="emerald"
             />
         </div>
     );
 }
 
-function StatCard({ label, value, icon, lightBg, lightBorder, lightText, lightIcon, darkColor }) {
+function StatCard({ label, value, icon, accent }) {
     const IconComponent = icon;
+
+    const colorStyles = {
+        blue: {
+            bg: 'bg-blue-50 dark:bg-blue-950/50',
+            text: 'text-blue-600 dark:text-blue-400',
+            border: 'border-blue-100 dark:border-blue-900/50'
+        },
+        indigo: {
+            bg: 'bg-indigo-50 dark:bg-indigo-950/50',
+            text: 'text-indigo-600 dark:text-indigo-400',
+            border: 'border-indigo-100 dark:border-indigo-900/50'
+        },
+        emerald: {
+            bg: 'bg-emerald-50 dark:bg-emerald-950/50',
+            text: 'text-emerald-600 dark:text-emerald-400',
+            border: 'border-emerald-100 dark:border-emerald-900/50'
+        }
+    };
+
+    const style = colorStyles[accent] || colorStyles.blue;
+
     return (
-        <div className={`rounded-xl p-3 text-center transition-all hover:scale-105 hover:shadow-lg border-2 ${lightBg} ${lightBorder} dark:${darkColor} dark:border`}>
-            <div className="flex justify-center mb-1">
-                {IconComponent && <IconComponent size={18} className={`${lightIcon} dark:opacity-70`} />}
+        <div className="bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 rounded-xl p-3 shadow-xs hover:border-slate-300 dark:hover:border-slate-600 transition-all flex flex-col items-center text-center">
+            <div className={`w-7 h-7 rounded-lg ${style.bg} ${style.text} ${style.border} border flex items-center justify-center mb-1.5 shrink-0`}>
+                <IconComponent size={14} />
             </div>
-            <p className={`text-xs font-bold uppercase tracking-wide ${lightText} dark:opacity-90`}>{label}</p>
-            <p className={`text-2xl font-extrabold ${lightText}`}>{value}</p>
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">
+                {label}
+            </span>
+            <span className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight mt-0.5 font-mono">
+                {value}
+            </span>
         </div>
     );
 }

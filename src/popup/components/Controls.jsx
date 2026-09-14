@@ -3,41 +3,45 @@ import { Play, Square, Download, RotateCcw } from 'lucide-react';
 
 export default function Controls({ isScraping, onStart, onStop, onExport, onReset, hasLeads }) {
     return (
-        <div className="p-4 pt-0 bg-white dark:bg-transparent">
+        <div className="p-4 pt-1 mt-auto">
             <div className="flex gap-2 mb-2">
                 {!isScraping ? (
                     <button
                         onClick={onStart}
-                        className="flex-1 bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 active:scale-95 text-white py-3 rounded-lg flex items-center justify-center gap-2 font-semibold transition-all shadow-md hover:shadow-xl"
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white py-2.5 rounded-xl flex items-center justify-center gap-2 font-semibold text-xs transition-all shadow-xs"
                     >
-                        <Play size={18} fill="currentColor" /> Start Scraping
+                        <Play size={15} fill="currentColor" />
+                        <span>Start Scraping</span>
                     </button>
                 ) : (
                     <button
                         onClick={onStop}
-                        className="flex-1 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 active:scale-95 text-white py-3 rounded-lg flex items-center justify-center gap-2 font-semibold transition-all shadow-md animate-pulse"
+                        className="flex-1 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white py-2.5 rounded-xl flex items-center justify-center gap-2 font-semibold text-xs transition-all shadow-xs"
                     >
-                        <Square size={18} fill="currentColor" /> Stop
+                        <Square size={14} fill="currentColor" />
+                        <span>Stop Scraping</span>
                     </button>
                 )}
 
                 <button
                     onClick={onExport}
                     disabled={!hasLeads}
-                    className="bg-gradient-to-r from-gray-800 to-gray-950 dark:from-gray-700 dark:to-gray-600 hover:from-black hover:to-gray-900 dark:hover:from-gray-600 dark:hover:to-gray-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-5 rounded-lg transition-all flex items-center justify-center shadow-md hover:shadow-xl"
+                    className="bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed px-3.5 rounded-xl transition-all flex items-center justify-center gap-1.5 font-semibold text-xs shadow-xs"
                     title="Export CSV"
                 >
-                    <Download size={20} />
+                    <Download size={15} />
+                    <span className="hidden sm:inline">Export</span>
                 </button>
             </div>
 
             <button
                 onClick={onReset}
                 disabled={!hasLeads}
-                className="w-full bg-gradient-to-r from-orange-600 to-amber-700 hover:from-orange-700 hover:to-amber-800 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2.5 rounded-lg flex items-center justify-center gap-2 font-semibold transition-all shadow-md hover:shadow-lg text-sm"
-                title="Reset all data"
+                className="w-full bg-slate-100/90 dark:bg-slate-800 hover:bg-slate-200/80 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 py-2 rounded-xl flex items-center justify-center gap-1.5 font-medium transition-all text-xs"
+                title="Reset session leads"
             >
-                <RotateCcw size={16} /> Reset Data
+                <RotateCcw size={13} />
+                <span>Reset Leads</span>
             </button>
         </div>
     );
