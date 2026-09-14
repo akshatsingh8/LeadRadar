@@ -8,32 +8,12 @@ const LiveMonitor = ({ logs, isScraping }) => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logs]);
 
-  // Calculate Latency, Queue, and ETA dynamically from the latest logs
-  const latestStats = [...logs].reverse().find(l => l.message.includes('[AI ENGINE]'))?.message || '';
-  const matchLatency = latestStats.match(/Latency:\s*(\d+)ms/);
-  const matchQueue = latestStats.match(/Queue:\s*(\d+)/);
-  
-  const latency = matchLatency ? matchLatency[1] : '--';
-  const queue = matchQueue ? matchQueue[1] : '0';
-  
-  // Calculate dynamic ETA based on current latency and remaining queue (batch size 10, ~4s delay)
-  let calculatedETASeconds = 0;
-  if (queue !== '0' && queue !== '--') {
-      const qNum = parseInt(queue, 10) || 0;
-      const latMs = parseInt(latency, 10) || 3000;
-      const batchesLeft = Math.ceil(qNum / 10);
-      calculatedETASeconds = Math.round(batchesLeft * ((latMs + 4000) / 1000));
-  } else if (isScraping && queue === '0' && latency !== '--') {
-      calculatedETASeconds = 0;
-  }
-
-  const formatETA = (seconds) => {
-    if (seconds <= 0) return '--';
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    if (m === 0) return `${s}s`;
-    return `${m}m ${s}s`;
-  };
+  // Calculate live enrichment metrics from background events
+  const enrichedCount = logs.filter(l => l.message.includes('[WEB] Enriched')).length;
+  const emailsDiscovered = logs.reduce((acc, l) => {
+    const m = l.message.match(/\((\d+)\s*emails/i);
+    return acc + (m ? parseInt(m[1], 10) : 0);
+  }, 0);
 
   return (
     <div className="flex flex-col h-full bg-gray-900 text-green-400 font-mono text-xs overflow-hidden">
@@ -51,16 +31,16 @@ const LiveMonitor = ({ logs, isScraping }) => {
         {/* Real-time Metrics Bar */}
         <div className="grid grid-cols-3 gap-2 p-2 bg-black border-t border-gray-800 text-[10px]">
           <div className="flex flex-col items-center justify-center p-1 bg-gray-900 rounded border border-gray-800">
-            <span className="text-gray-500 uppercase">Latency</span>
-            <span className="text-blue-400 font-bold">{latency !== '--' ? `${latency}ms` : '--'}</span>
+            <span className="text-gray-500 uppercase">Engine</span>
+            <span className="text-emerald-400 font-bold">Direct (DOM)</span>
           </div>
           <div className="flex flex-col items-center justify-center p-1 bg-gray-900 rounded border border-gray-800">
-            <span className="text-gray-500 uppercase">Queue</span>
-            <span className="text-yellow-500 font-bold">{queue}</span>
+            <span className="text-gray-500 uppercase">Sites Crawled</span>
+            <span className="text-blue-400 font-bold">{enrichedCount}</span>
           </div>
           <div className="flex flex-col items-center justify-center p-1 bg-gray-900 rounded border border-gray-800">
-            <span className="text-gray-500 uppercase">ETA Remaining</span>
-            <span className="text-purple-400 font-bold">{calculatedETASeconds > 0 ? formatETA(calculatedETASeconds) : '--'}</span>
+            <span className="text-gray-500 uppercase">Emails Found</span>
+            <span className="text-purple-400 font-bold">{emailsDiscovered}</span>
           </div>
         </div>
       </div>

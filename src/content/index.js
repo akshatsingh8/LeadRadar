@@ -160,15 +160,8 @@ async function scrapeLoop(initialSettings) {
     // Send initial heartbeat log
     safeSendMessage({
         action: 'LOG_MONITOR',
-        message: '📡 Scraper engine connected to Google Maps tab.'
+        message: '[ENGINE] Connected to Google Maps feed.'
     });
-
-    // Get API Key and Model for AI mode
-    const storage = await new Promise(r => chrome.storage.local.get(['apiKey', 'settings'], r));
-    const apiKey = storage.apiKey;
-    const orKey = storage.settings?.openRouterKey;
-    const hasAIKey = !!apiKey || !!orKey;
-    const aiModel = storage.settings?.aiModel || 'gemini-3.1-flash-lite-preview';
 
     while (isScraping) {
         if (activeSettings.autoScroll) {
@@ -190,13 +183,8 @@ async function scrapeLoop(initialSettings) {
                 scrapedLeads.set(key, lead);
                 newlyFoundLeads.push(lead);
 
-                // 1. Trigger AI Smart Batching (Fire and Forget)
-                if (hasAIKey) {
-                    safeSendMessage({ action: 'AI_PARSE_LEAD', lead, apiKey, aiModel });
-                }
-
-                // 2. Trigger Website Enrichment (Deep Scraping - Independent)
-                if (lead.website) {
+                // Trigger Website Deep Enrichment (Email & Socials Scraping)
+                if (lead.website && activeSettings.deepEnrichment !== false) {
                     safeSendMessage({ action: 'ENRICH_LEAD', url: lead.website, id: key });
                 }
             }

@@ -183,7 +183,7 @@ RULES: Extract clean individual components (street, city, state, zip, country, p
 
                     if (response.status === 503 || response.status === 429) {
                         try {
-                            chrome.runtime.sendMessage({ action: 'LOG_MONITOR', message: `[TIER BUSY] 🔄 ${tier.model} (${response.status}). Trying next in 2s...` });
+                            chrome.runtime.sendMessage({ action: 'LOG_MONITOR', message: `[TIER BUSY] ${tier.model} (${response.status}). Retrying in 2s...` });
                         } catch(e){
                             console.debug('Log monitor notification suppressed:', e);
                         }
@@ -208,7 +208,7 @@ RULES: Extract clean individual components (street, city, state, zip, country, p
                         batchSuccess = true;
                         const latency = Math.round(performance.now() - startTime);
                         try {
-                            chrome.runtime.sendMessage({ action: 'LOG_MONITOR', message: `[AI ENGINE] ✅ ${tier.model} OK | Latency: ${latency}ms | Queue: ${aiBuffer.length}` });
+                            chrome.runtime.sendMessage({ action: 'LOG_MONITOR', message: `[AI ENGINE] ${tier.model} OK | Latency: ${latency}ms | Queue: ${aiBuffer.length}` });
                         } catch(e){
                             console.debug('Log monitor notification suppressed:', e);
                         }
@@ -222,7 +222,7 @@ RULES: Extract clean individual components (street, city, state, zip, country, p
             if (!batchSuccess) {
                 aiBuffer.unshift(...currentBatch);
                 try {
-                    chrome.runtime.sendMessage({ action: 'LOG_MONITOR', message: `[AI COOLING] ⏳ Retrying queue in 10s...` });
+                    chrome.runtime.sendMessage({ action: 'LOG_MONITOR', message: `[AI COOLING] Retrying queue in 10s...` });
                 } catch(e){
                     console.debug('Log monitor notification suppressed:', e);
                 }
@@ -233,7 +233,7 @@ RULES: Extract clean individual components (street, city, state, zip, country, p
         }
         
         try {
-            chrome.runtime.sendMessage({ action: 'LOG_MONITOR', message: `✨ [SYSTEM] Process complete. All leads in queue have been analyzed.` });
+            chrome.runtime.sendMessage({ action: 'LOG_MONITOR', message: `[SYSTEM] Process complete. All leads in queue analyzed.` });
         } catch(e){
             console.debug('Log monitor notification suppressed:', e);
         }

@@ -204,9 +204,6 @@ export const extractLeads = () => {
                 data.website = href;
             }
 
-            // --- SURGICAL AI PAYLOAD (Clean Isolated Tokens) ---
-            data.optimizedText = `ID_REF: ${data.url}\nADDR_TAG: ${data.address || "N/A"}\nPHONE_TAG: ${data.phone || "N/A"}`;
-
             leads.push(data);
         } catch (e) {
             console.error('LeadRadar: Error parsing item', e);

@@ -1,9 +1,7 @@
 import React from 'react';
-import { Settings as SettingsIcon, Key, Moon, Sun, Info, PlayCircle, Globe, Download, CheckCircle2 } from 'lucide-react';
+import { Settings as SettingsIcon, Moon, Sun, CheckCircle2, ShieldCheck, Mail } from 'lucide-react';
 
 export default function Settings({ settings, onToggle, darkMode, onToggleDarkMode }) {
-    const hasApiKey = settings.aiProvider === 'openrouter' ? !!settings.openRouterKey : !!settings.apiKey;
-
     return (
         <div className="p-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300 pb-12">
             {/* Header section */}
@@ -12,126 +10,36 @@ export default function Settings({ settings, onToggle, darkMode, onToggleDarkMod
                     <SettingsIcon size={28} className="text-blue-600 animate-spin-slow" />
                     Configuration
                 </h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Fine-tune the extraction engine and system behavior.</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Fine-tune the direct browser extraction engine and crawling behavior.</p>
             </div>
 
-            {/* Instruction Section - Premium Card */}
-            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-5 text-white shadow-xl shadow-blue-500/20 relative overflow-hidden">
-                <div className="absolute -right-4 -top-4 opacity-10 rotate-12">
-                    <Info size={120} />
-                </div>
-                <h3 className="text-sm font-black uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <CheckCircle2 size={16} /> Quick Start Guide
-                </h3>
-                <div className="space-y-3 relative z-10">
-                    <div className="flex gap-3">
-                        <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold shrink-0">1</div>
-                        <p className="text-[11px] font-medium leading-relaxed">Search for any business or keyword on <b>Google Maps</b> (e.g., "Plumbers in New York").</p>
-                    </div>
-                    <div className="flex gap-3">
-                        <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold shrink-0">2</div>
-                        <p className="text-[11px] font-medium leading-relaxed">Ensure your <b>Gemini API Key</b> is connected below for Smart Mode.</p>
-                    </div>
-                    <div className="flex gap-3">
-                        <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold shrink-0">3</div>
-                        <p className="text-[11px] font-medium leading-relaxed">Click <b>"Start Scraping"</b> in the dashboard. Watch leads populate in real-time!</p>
-                    </div>
-                    <div className="flex gap-3">
-                        <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold shrink-0">4</div>
-                        <p className="text-[11px] font-medium leading-relaxed">Once finished, head to the <b>Data tab</b> to export your CSV.</p>
-                    </div>
-                </div>
-            </div>
-
-            {/* AI Status Card */}
-            <div className={`p-4 rounded-xl border-2 transition-all shadow-sm ${hasApiKey ? 'bg-green-50/50 border-green-200 dark:bg-green-900/10 dark:border-green-900/30' : 'bg-red-50/50 border-red-200 dark:bg-red-900/10 dark:border-red-900/30'}`}>
+            {/* Engine Status Card */}
+            <div className="p-4 rounded-2xl border-2 transition-all shadow-sm bg-emerald-50/50 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-900/30">
                 <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">ENGINE STATUS</span>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${hasApiKey ? 'bg-green-500 text-white' : 'bg-red-500 text-white animate-pulse'}`}>
-                        {hasApiKey ? 'READY' : 'CREDENTIALS MISSING'}
+                    <span className="text-xs font-black uppercase tracking-widest text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                        <ShieldCheck size={14} className="text-emerald-500" /> ENGINE STATUS
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-600 text-white flex items-center gap-1 shadow-sm">
+                        <CheckCircle2 size={10} /> 100% UNLIMITED & ACTIVE
                     </span>
                 </div>
                 <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
-                    {hasApiKey 
-                        ? 'Smart Extraction is active. Processing leads in real-time with ultra-low latency fallback chain.' 
-                        : 'Smart Extraction is disabled. Add an API key to enable AI-powered lead scrubbing and enrichment.'}
+                    Direct Browser Extraction is running natively in your browser. Business names, phone numbers, addresses, categories, ratings, and operational hours are parsed directly without third-party API quotas or keys.
                 </p>
             </div>
 
-            {/* AI Settings Section */}
-            <div className="space-y-6 pt-2">
-                <div className="flex items-center gap-2 mb-2">
+            {/* Data Enrichment Engine */}
+            <div className="space-y-3">
+                <div className="flex items-center gap-2 mb-1">
                     <div className="h-4 w-1 bg-blue-600 rounded-full"></div>
-                    <h3 className="text-[11px] font-black text-gray-900 dark:text-white uppercase tracking-widest">AI CONFIGURATION</h3>
+                    <h3 className="text-[11px] font-black text-gray-900 dark:text-white uppercase tracking-widest">DEEP DATA ENRICHMENT</h3>
                 </div>
-                
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase mb-2 ml-1">Preferred Provider</label>
-                        <div className="grid grid-cols-2 gap-3">
-                            <button 
-                                onClick={() => onToggle('aiProvider', 'gemini')}
-                                className={`group py-3 text-[10px] font-bold rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${settings.aiProvider !== 'openrouter' ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/30' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-800 text-gray-400 hover:border-blue-200'}`}
-                            >
-                                <CheckCircle2 size={14} className={settings.aiProvider !== 'openrouter' ? "opacity-100" : "opacity-0"} />
-                                GOOGLE STUDIO
-                            </button>
-                            <button 
-                                onClick={() => onToggle('aiProvider', 'openrouter')}
-                                className={`group py-3 text-[10px] font-bold rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${settings.aiProvider === 'openrouter' ? 'bg-purple-600 border-purple-600 text-white shadow-lg shadow-purple-600/30' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-800 text-gray-400 hover:border-purple-200'}`}
-                            >
-                                <Globe size={14} className={settings.aiProvider === 'openrouter' ? "opacity-100" : "opacity-0"} />
-                                OPENROUTER
-                            </button>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase mb-2 ml-1">
-                            {settings.aiProvider === 'openrouter' ? 'OpenRouter API Key' : 'Google AI Studio API Key'}
-                        </label>
-                        <div className="relative group">
-                            <Key size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                            <input 
-                                type="password" 
-                                className="w-full pl-11 pr-4 py-4 text-sm bg-gray-50 dark:bg-gray-800/80 border-2 border-transparent rounded-2xl focus:bg-white dark:focus:bg-gray-800 focus:border-blue-500 outline-none transition-all dark:text-white shadow-inner"
-                                placeholder={settings.aiProvider === 'openrouter' ? (settings.openRouterKey ? "••••••••••••••••" : "sk-or-v1-...") : (settings.apiKey ? "••••••••••••••••" : "AIza...")}
-                                value={settings.aiProvider === 'openrouter' ? (settings.openRouterKey || '') : (settings.apiKey || '')}
-                                onChange={(e) => onToggle(settings.aiProvider === 'openrouter' ? 'openRouterKey' : 'apiKey', e.target.value)}
-                            />
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase mb-2 ml-1">LLM Model Engine</label>
-                        <div className="relative">
-                            <select 
-                                className="w-full p-4 text-sm bg-gray-50 dark:bg-gray-800/80 border-2 border-transparent rounded-2xl focus:bg-white dark:focus:bg-gray-800 focus:border-blue-500 outline-none transition-all dark:text-white shadow-inner appearance-none cursor-pointer"
-                                value={settings.aiModel || (settings.aiProvider === 'openrouter' ? 'openai/gpt-oss-120b:free' : 'gemini-3.1-flash-lite-preview')}
-                                onChange={(e) => onToggle('aiModel', e.target.value)}
-                            >
-                                {settings.aiProvider === 'openrouter' ? (
-                                    <>
-                                        <option value="openai/gpt-oss-120b:free">🧠 GPT-OSS 120B (Reasoning)</option>
-                                        <option value="google/gemini-2.0-flash-001">⚡ Gemini 2.0 Flash</option>
-                                        <option value="anthropic/claude-3.5-sonnet">🎭 Claude 3.5 Sonnet</option>
-                                    </>
-                                ) : (
-                                    <>
-                                        <option value="gemini-3.1-flash-lite-preview">⚡ Gemini 3.1 Flash Lite</option>
-                                        <option value="gemini-3.1-pro-preview">💎 Gemini 3.1 Pro</option>
-                                    </>
-                                )}
-                            </select>
-                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-40">
-                                ▼
-                            </div>
-                        </div>
-                        <p className="text-[10px] text-gray-400 mt-3 flex items-center gap-1.5 italic px-1">
-                            <CheckCircle2 size={10} className="text-green-500" /> Real-time extraction enabled with 5s serial delay.
-                        </p>
-                    </div>
-                </div>
+                <Toggle
+                    label="Deep Website Crawling"
+                    description="Automatically visits business websites to discover direct email addresses, secondary phone numbers, and social links"
+                    checked={settings.deepEnrichment !== false}
+                    onChange={(val) => onToggle('deepEnrichment', val)}
+                />
             </div>
 
             {/* Behavioral Settings */}
