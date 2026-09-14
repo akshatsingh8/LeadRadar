@@ -12,18 +12,21 @@ import LiveMonitor from './components/LiveMonitor'
 import { LayoutGrid, Table2, History as HistoryIcon, Activity, Settings as SettingsIcon } from 'lucide-react'
 import { convertToCSV, downloadCSV } from '../content/csv'
 
+const DEFAULT_SETTINGS = {
+  humanBehavior: true,
+  autoScroll: true,
+  autoNextPage: true,
+  aiProvider: 'gemini',
+  aiModel: 'gemini-3.1-flash-lite-preview',
+  openRouterKey: '',
+  apiKey: ''
+};
+
 function App() {
   const [currentTab, setCurrentTab] = useState('dashboard');
   const [stats, setStats] = useState({ leads: 0, pages: 0, time: '00:00' })
   const [isScraping, setIsScraping] = useState(false)
-  const [settings, setSettings] = useState({
-    humanBehavior: true,
-    autoScroll: true,
-    autoNextPage: true,
-    aiProvider: 'gemini',
-    aiModel: 'gemini-3.1-flash-lite-preview',
-    openRouterKey: ''
-  })
+  const [settings, setSettings] = useState(DEFAULT_SETTINGS)
   const [lastLead, setLastLead] = useState(null)
   const [allLeads, setAllLeads] = useState([])
   const [history, setHistory] = useState([])
@@ -31,11 +34,54 @@ function App() {
   const [toast, setToast] = useState(null)
   const [logs, setLogs] = useState([])
 
+  const safeSendMessage = (action, data = {}) => {
+    if (typeof chrome === 'undefined' || !chrome.tabs) return;
+
+    chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
+      const activeTab = tabs[0];
+      if (!activeTab?.id) return;
+
+      try {
+        chrome.tabs.sendMessage(activeTab.id, { action, ...data }, () => {
+          const lastErr = chrome.runtime.lastError;
+          if (lastErr) {
+            const msg = lastErr.message || '';
+            
+            // Handle specific Chrome Extension lifecycle errors
+            if (msg.includes('Extension context invalidated')) {
+              showToast('System updated. Please refresh Google Maps to continue.', 'info');
+              setIsScraping(false);
+            } else if (msg.includes('Could not establish connection') || msg.includes('Receiving end does not exist')) {
+              // Only alert on START_SCRAPING, others are usually cleanup or meta-sync
+              if (action === 'START_SCRAPING') {
+                showToast('Google Maps scraper not ready. Refresh the page!', 'error');
+              }
+            } else {
+              console.warn(`[LeadRadar Message Error] ${action}:`, msg);
+            }
+          }
+        });
+      } catch (e) {
+        if (e.message.includes('Extension context invalidated')) {
+          showToast('Extension updated. Refreshing the page is required.', 'info');
+          setIsScraping(false);
+        }
+      }
+    });
+  };
+
   useEffect(() => {
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.get(['stats', 'settings', 'isScraping', 'lastLead', 'allLeads', 'history', 'darkMode'], (result) => {
+      chrome.storage.local.get(['stats', 'settings', 'isScraping', 'lastLead', 'allLeads', 'history', 'darkMode', 'apiKey'], (result) => {
         if (result.stats) setStats(result.stats)
-        if (result.settings) setSettings(result.settings)
+        if (result.settings) {
+          setSettings(prev => ({
+            ...DEFAULT_SETTINGS,
+            ...prev,
+            ...result.settings,
+            apiKey: result.apiKey || result.settings.apiKey || prev.apiKey || ''
+          }))
+        }
         if (result.isScraping) setIsScraping(result.isScraping)
         if (result.lastLead) setLastLead(result.lastLead)
         if (result.allLeads) setAllLeads(result.allLeads)
@@ -61,6 +107,9 @@ function App() {
         if (changes.history) setHistory(changes.history.newValue || []);
         if (changes.isScraping) setIsScraping(changes.isScraping.newValue);
         if (changes.lastLead) setLastLead(changes.lastLead.newValue);
+        if (changes.settings) {
+          setSettings(prev => ({ ...DEFAULT_SETTINGS, ...prev, ...(changes.settings.newValue || {}) }));
+        }
       }
     }
 
@@ -103,6 +152,7 @@ function App() {
       if (key === 'apiKey') update.apiKey = value
       chrome.storage.local.set(update)
     }
+    safeSendMessage('SETTINGS_UPDATED', { settings: newSettings })
   }
 
   const toggleDarkMode = () => {
@@ -111,42 +161,6 @@ function App() {
     if (typeof chrome !== 'undefined' && chrome.storage) {
       chrome.storage.local.set({ darkMode: newDarkMode });
     }
-  }
-
-  const safeSendMessage = (action, data = {}) => {
-    if (typeof chrome === 'undefined' || !chrome.tabs) return;
-
-    chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
-      const activeTab = tabs[0];
-      if (!activeTab?.id) return;
-
-      try {
-        chrome.tabs.sendMessage(activeTab.id, { action, ...data }, () => {
-          const lastErr = chrome.runtime.lastError;
-          if (lastErr) {
-            const msg = lastErr.message || '';
-            
-            // Handle specific Chrome Extension lifecycle errors
-            if (msg.includes('Extension context invalidated')) {
-              showToast('System updated. Please refresh Google Maps to continue.', 'info');
-              setIsScraping(false);
-            } else if (msg.includes('Could not establish connection') || msg.includes('Receiving end does not exist')) {
-              // Only alert on START_SCRAPING, others are usually cleanup or meta-sync
-              if (action === 'START_SCRAPING') {
-                showToast('Google Maps scraper not ready. Refresh the page!', 'error');
-              }
-            } else {
-              console.warn(`[LeadRadar Message Error] ${action}:`, msg);
-            }
-          }
-        });
-      } catch (e) {
-        if (e.message.includes('Extension context invalidated')) {
-          showToast('Extension updated. Refreshing the page is required.', 'info');
-          setIsScraping(false);
-        }
-      }
-    });
   }
 
   const startScraping = () => {
@@ -170,15 +184,16 @@ function App() {
     showToast('Scraping stopped.', 'info');
   }
 
-  const exportData = () => {
-    if (allLeads.length === 0) {
+  const exportData = (customLeads) => {
+    const leadsToExport = (Array.isArray(customLeads) && customLeads.length > 0) ? customLeads : allLeads;
+    if (leadsToExport.length === 0) {
       showToast('No leads to export!', 'error');
       return;
     }
-    const csvContent = convertToCSV(allLeads);
+    const csvContent = convertToCSV(leadsToExport);
     const filename = `leads_export_${new Date().toISOString().slice(0, 10)}.csv`;
     downloadCSV(csvContent, filename);
-    showToast('CSV exported!', 'success');
+    showToast(`Exported ${leadsToExport.length} leads to CSV!`, 'success');
   }
 
   const handleClearData = () => {

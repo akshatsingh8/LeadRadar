@@ -1,3 +1,32 @@
+const extractPhone = (text) => {
+    if (!text) return '';
+    // Avoid addresses with street suffixes
+    if (/\b(?:st|street|ave|avenue|rd|road|blvd|lane|dr|drive|way|court|ct|floor|suite|ste|bldg|building|parkway|pkwy)\b/i.test(text)) {
+        return '';
+    }
+    const match = text.match(/(?:\+?\d{1,4}[-.\s]?)?(?:\(?\d{2,5}\)?[-.\s]?)?\d{3,4}[-.\s]?\d{3,5}\b/);
+    if (match) {
+        const digits = match[0].replace(/\D/g, '');
+        if (digits.length >= 7 && digits.length <= 15) {
+            return match[0].trim();
+        }
+    }
+    return '';
+};
+
+const isHours = (text) => {
+    return /\b(?:Open|Closed|Closes|Opens|24 hours)\b/i.test(text) && 
+           (/\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b/i.test(text) || /\b24 hours\b/i.test(text) || /⋅|\u22c5/i.test(text));
+};
+
+const isRatingOrReview = (text) => {
+    if (/^[1-5][.,]\d\s*(?:★|stars?)?\s*(?:\([\d,.]+[kKmM]?\))?$/i.test(text)) return true;
+    if (/^[1-5][.,]\d\s*\([\d,.]+[kKmM]?\)$/.test(text)) return true;
+    if (/^\(?[\d,.]+[kKmM]?\)?\s*(?:reviews?|ratings?)?$/i.test(text)) return true;
+    if (text.includes('★')) return true;
+    return false;
+};
+
 export const extractLeads = () => {
     const leads = [];
 
@@ -97,28 +126,69 @@ export const extractLeads = () => {
                 }
             }
 
-            // 3. Business Hours & Snippet
+            // 3. Sub-info Parsing (Category, Address, Phone, Hours, Service Badges)
             const subInfoLines = Array.from(item.querySelectorAll('.W4Pne, .fontBodyMedium'));
-            let addressSnippet = "";
-            let phoneSnippet = "";
+            const allTokens = subInfoLines
+                .flatMap(line => (line.innerText || '').split(/[·•\u2022\u00b7|\n]/).map(p => p.trim()))
+                .filter(Boolean);
 
-            subInfoLines.forEach(line => {
-                const text = line.innerText;
-                if (text.includes('Open') || text.includes('Closed')) {
-                    data.hours = text.split('\u22c5')[0].trim();
+            let detectedCategory = '';
+            let detectedPhone = '';
+            let detectedHours = '';
+            let detectedAddress = '';
+            const serviceBadges = [];
+
+            allTokens.forEach(token => {
+                if (isRatingOrReview(token)) return;
+                if (/^[$€£₹¥+]+$/.test(token)) return;
+                if (/\b(?:\d+(?:\.\d+)?\s*(?:km|mi|m))\b/i.test(token)) return; // distance
+
+                if (!detectedHours && isHours(token)) {
+                    detectedHours = token;
+                    return;
                 }
-                // Logic: Address lines usually contain street numbers or neighborhood names
-                // Phone lines usually contain digits but are often mixed with distance
-                if (text.includes('·')) {
-                    const parts = text.split('·');
-                    parts.forEach(p => {
-                        if (/\d{5}/.test(p)) addressSnippet = p.trim(); // Likely address/zip
-                        if (/\d{4,}/.test(p) && !addressSnippet.includes(p)) phoneSnippet = p.trim(); // Likely phone
-                    });
+
+                if (!detectedPhone) {
+                    const ph = extractPhone(token);
+                    if (ph) {
+                        detectedPhone = ph;
+                        return;
+                    }
+                }
+
+                if (/\b(?:years in business|dine-in|takeaway|delivery|curbside|on-site|appointments|in-store|wheelchair)\b/i.test(token)) {
+                    serviceBadges.push(token);
+                    return;
+                }
+
+                // Category vs Address disambiguation
+                if (!detectedCategory && !token.includes(',') && !/\d{2,}/.test(token) && token.length < 40) {
+                    detectedCategory = token;
+                    return;
+                }
+
+                if (!detectedAddress && (token.includes(',') || /\d+/.test(token) || token.length > 5)) {
+                    detectedAddress = token;
+                    return;
                 }
             });
 
-            // 4. Website (Direct DOM Link with fallbacks & redirect unwrapping)
+            // 4. Set Clean Categorical Fields
+            data.category = detectedCategory || item.querySelector('.W4Pne span:first-child')?.innerText || "Business";
+            data.category = data.category
+                .replace(/^[1-5][.,]\d\s*(?:★)?/, '')
+                .replace(/^[$€£₹¥+]+$/, '')
+                .replace(/[·•]/g, '')
+                .trim() || "Business";
+
+            data.hours = detectedHours || "";
+            data.phone = detectedPhone || "";
+            data.address = detectedAddress || "";
+            if (serviceBadges.length > 0) {
+                data.sub_categories = serviceBadges.join(', ');
+            }
+
+            // 5. Website (Direct DOM Link with fallbacks & redirect unwrapping)
             const webLink = item.querySelector('a[data-value="Website"], a[aria-label*="website" i], a[data-tooltip*="website" i]');
             if (webLink && webLink.href) {
                 let href = webLink.href;
@@ -134,12 +204,8 @@ export const extractLeads = () => {
                 data.website = href;
             }
 
-            // Immediate DOM fallback so leads have address and phone even before or without AI
-            data.address = addressSnippet || (subInfoLines[1]?.innerText !== data.category ? (subInfoLines[1]?.innerText || "") : "");
-            data.phone = phoneSnippet || "";
-
-            // --- SURGICAL AI PAYLOAD (Only for Cleaning) ---
-            data.optimizedText = `ID_REF: ${data.url}\nADDR_TAG: ${addressSnippet || subInfoLines[1]?.innerText || "N/A"}\nPHONE_TAG: ${phoneSnippet || subInfoLines[2]?.innerText || "N/A"}`;
+            // --- SURGICAL AI PAYLOAD (Clean Isolated Tokens) ---
+            data.optimizedText = `ID_REF: ${data.url}\nADDR_TAG: ${data.address || "N/A"}\nPHONE_TAG: ${data.phone || "N/A"}`;
 
             leads.push(data);
         } catch (e) {

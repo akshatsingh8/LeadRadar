@@ -155,8 +155,8 @@ async function processBatch(passedApiKey, passedOrKey) {
             let batchSuccess = false;
 
             const systemPrompt = `G-Maps Data Specialist. "Clean" and "Format" the specific tags into the schema.
-SCHEMA: { "id": "ID_REF from input", "city": "City name", "state": "State/Province", "address": "Cleaned Full Address", "phone": "International Clean Format" }
-RULES: Focus on Address/Contact/City/State. ID must match ID_REF exactly. Output VALID JSON array ONLY. NO preamble.`;
+SCHEMA: { "id": "ID_REF from input", "street": "Street number & name or empty", "city": "City name or empty", "state": "State/Province or empty", "zip": "Postal code or empty", "country": "Country or empty", "address": "Cleaned Full Address", "phone": "International Clean Format or empty" }
+RULES: Extract clean individual components (street, city, state, zip, country, phone, address). ID must match ID_REF exactly. Output VALID JSON array ONLY. NO preamble.`;
 
             for (const tier of tierChain) {
                 const activeKey = tier.provider === 'openrouter' ? orKey : apiKey;

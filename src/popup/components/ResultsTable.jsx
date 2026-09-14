@@ -68,7 +68,7 @@ export default function ResultsTable({ leads, onCopy, onClear, onExport }) {
                 <div className="flex gap-2">
                     {onExport && (
                         <button
-                            onClick={onExport}
+                            onClick={() => onExport(sortedLeads)}
                             disabled={sortedLeads.length === 0}
                             className="px-3 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md shadow-sm transition-colors flex items-center gap-2"
                             title="Export to CSV"

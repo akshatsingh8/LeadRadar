@@ -32,12 +32,23 @@ const safeSendMessage = (message, callback) => {
     return false;
 };
 
+let activeSettings = { autoScroll: true, autoNextPage: true, humanBehavior: true };
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'START_SCRAPING') {
+        if (request.settings) {
+            activeSettings = { ...activeSettings, ...request.settings };
+        }
         if (!isScraping) {
             isScraping = true;
             startTime = Date.now();
-            scrapeLoop(request.settings);
+            scrapeLoop(activeSettings);
+        }
+        sendResponse({ success: true });
+    }
+    else if (request.action === 'SETTINGS_UPDATED') {
+        if (request.settings) {
+            activeSettings = { ...activeSettings, ...request.settings };
         }
         sendResponse({ success: true });
     }
@@ -140,7 +151,10 @@ async function syncData(newlyFoundLeads = []) {
     }
 }
 
-async function scrapeLoop(settings) {
+async function scrapeLoop(initialSettings) {
+    if (initialSettings) {
+        activeSettings = { ...activeSettings, ...initialSettings };
+    }
     chrome.storage.local.set({ isScraping: true });
     
     // Send initial heartbeat log
@@ -157,10 +171,11 @@ async function scrapeLoop(settings) {
     const aiModel = storage.settings?.aiModel || 'gemini-3.1-flash-lite-preview';
 
     while (isScraping) {
-        if (settings.autoScroll) {
+        if (activeSettings.autoScroll) {
             const scrolled = scrollFeed();
             if (scrolled) {
-                await sleep(1000 + Math.random() * 1000);
+                const delay = activeSettings.humanBehavior ? (1000 + Math.random() * 1000) : 1000;
+                await sleep(delay);
             } else {
                 await sleep(500);
             }
@@ -193,7 +208,7 @@ async function scrapeLoop(settings) {
             syncData([]); // Just updates stats
         }
 
-        if (settings.autoNextPage && hasReachedEnd()) {
+        if (activeSettings.autoNextPage && hasReachedEnd()) {
             await sleep(2000);
             const clicked = clickNext();
             if (clicked) {

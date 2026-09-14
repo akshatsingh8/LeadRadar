@@ -2,7 +2,7 @@ import React from 'react';
 import { Settings as SettingsIcon, Key, Moon, Sun, Info, PlayCircle, Globe, Download, CheckCircle2 } from 'lucide-react';
 
 export default function Settings({ settings, onToggle, darkMode, onToggleDarkMode }) {
-    const hasApiKey = !!settings.apiKey;
+    const hasApiKey = settings.aiProvider === 'openrouter' ? !!settings.openRouterKey : !!settings.apiKey;
 
     return (
         <div className="p-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300 pb-12">
@@ -140,24 +140,24 @@ export default function Settings({ settings, onToggle, darkMode, onToggleDarkMod
                     <div className="h-4 w-1 bg-green-600 rounded-full"></div>
                     <h3 className="text-[11px] font-black text-gray-900 dark:text-white uppercase tracking-widest">BEHAVIORAL ENGINE</h3>
                 </div>
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 gap-2.5">
                     <Toggle
-                        label="Human-like Simulation"
-                        description="Randomized delays during map interaction"
-                        checked={settings.humanBehavior}
-                        onChange={() => onToggle('humanBehavior')}
+                        label="Auto Scrolling"
+                        description="Automatically scroll Google Maps feed to continuously load leads"
+                        checked={settings.autoScroll}
+                        onChange={(val) => onToggle('autoScroll', val)}
                     />
                     <Toggle
-                        label="Vertical Autoscroll"
-                        description="Force scroll list to trigger lazy loading"
-                        checked={settings.autoScroll}
-                        onChange={() => onToggle('autoScroll')}
+                        label="Human-like Simulation"
+                        description="Randomized delays during map interaction to prevent rate limits"
+                        checked={settings.humanBehavior}
+                        onChange={(val) => onToggle('humanBehavior', val)}
                     />
                     <Toggle
                         label="Smart Next Page"
-                        description="Auto-click pagination when list ends"
+                        description="Auto-click pagination when list reaches the end"
                         checked={settings.autoNextPage}
-                        onChange={() => onToggle('autoNextPage')}
+                        onChange={(val) => onToggle('autoNextPage', val)}
                     />
                 </div>
             </div>
@@ -196,17 +196,26 @@ export default function Settings({ settings, onToggle, darkMode, onToggleDarkMod
 }
 
 function Toggle({ label, description, checked, onChange }) {
+    const isChecked = Boolean(checked);
     return (
-        <label className="flex items-center justify-between cursor-pointer group p-3 bg-white dark:bg-gray-900 border-2 border-gray-50 dark:border-gray-800 rounded-2xl hover:border-blue-100 dark:hover:border-blue-900/30 transition-all">
-            <div className="space-y-0.5">
-                <span className="text-sm font-bold text-gray-800 dark:text-gray-200 block">{label}</span>
-                <span className="text-[10px] text-gray-400 dark:text-gray-500 block">{description}</span>
+        <div 
+            onClick={() => onChange(!isChecked)}
+            className={`flex items-center justify-between cursor-pointer group p-3.5 bg-white dark:bg-gray-900 border-2 rounded-2xl transition-all select-none ${isChecked ? 'border-blue-200 dark:border-blue-900/40 bg-blue-50/20 shadow-sm' : 'border-gray-100 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700'}`}
+        >
+            <div className="space-y-0.5 pr-3">
+                <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-gray-800 dark:text-gray-200">{label}</span>
+                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider transition-colors ${isChecked ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'}`}>
+                        {isChecked ? 'ON' : 'OFF'}
+                    </span>
+                </div>
+                <span className="text-[11px] text-gray-400 dark:text-gray-500 block leading-tight">{description}</span>
             </div>
-            <div className="relative">
-                <input type="checkbox" className="sr-only" checked={checked} onChange={onChange} />
-                <div className={`w-11 h-6 rounded-full shadow-inner transition-all ${checked ? 'bg-green-600' : 'bg-gray-200 dark:bg-gray-700'}`}></div>
-                <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full shadow-md transition-transform ${checked ? 'transform translate-x-5' : ''}`}></div>
+            <div className="relative shrink-0">
+                <div className={`w-12 h-6 rounded-full shadow-inner transition-colors duration-200 flex items-center p-1 ${isChecked ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-700'}`}>
+                    <div className={`w-4 h-4 bg-white rounded-full shadow-md transition-transform duration-200 ${isChecked ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                </div>
             </div>
-        </label>
+        </div>
     );
 }
