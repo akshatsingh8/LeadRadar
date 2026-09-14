@@ -9,7 +9,8 @@ import ResultsTable from './components/ResultsTable'
 import History from './components/History'
 import Toast from './components/Toast'
 import LiveMonitor from './components/LiveMonitor'
-import { LayoutGrid, Table2, History as HistoryIcon, Activity, Settings as SettingsIcon } from 'lucide-react'
+import Campaigns from './components/Campaigns'
+import { LayoutGrid, Table2, History as HistoryIcon, Activity, Settings as SettingsIcon, Layers } from 'lucide-react'
 import { convertToCSV, downloadCSV } from '../content/csv'
 
 const DEFAULT_SETTINGS = {
@@ -30,6 +31,17 @@ function App() {
   const [darkMode, setDarkMode] = useState(false)
   const [toast, setToast] = useState(null)
   const [logs, setLogs] = useState([])
+  const [campaignState, setCampaignState] = useState({
+    active: false,
+    queue: [],
+    currentIndex: 0,
+    tabId: null,
+    totalLeadsCollected: 0
+  });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ id: Date.now(), message, type });
+  };
 
   const safeSendMessage = (action, data = {}) => {
     if (typeof chrome === 'undefined' || !chrome.tabs) return;
@@ -69,7 +81,7 @@ function App() {
 
   useEffect(() => {
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.get(['stats', 'settings', 'isScraping', 'lastLead', 'allLeads', 'history', 'darkMode', 'apiKey'], (result) => {
+      chrome.storage.local.get(['stats', 'settings', 'isScraping', 'lastLead', 'allLeads', 'history', 'darkMode', 'apiKey', 'campaignState'], (result) => {
         if (result.stats) setStats(result.stats)
         if (result.settings) {
           setSettings(prev => ({
@@ -84,6 +96,7 @@ function App() {
         if (result.allLeads) setAllLeads(result.allLeads)
         if (result.history) setHistory(result.history)
         if (result.darkMode !== undefined) setDarkMode(result.darkMode)
+        if (result.campaignState) setCampaignState(result.campaignState)
       })
     }
   }, [])
@@ -104,6 +117,7 @@ function App() {
         if (changes.history) setHistory(changes.history.newValue || []);
         if (changes.isScraping) setIsScraping(changes.isScraping.newValue);
         if (changes.lastLead) setLastLead(changes.lastLead.newValue);
+        if (changes.campaignState) setCampaignState(changes.campaignState.newValue || { active: false, queue: [] });
         if (changes.settings) {
           setSettings(prev => ({ ...DEFAULT_SETTINGS, ...prev, ...(changes.settings.newValue || {}) }));
         }
@@ -120,6 +134,8 @@ function App() {
       } else if (request.action === 'UPDATE_STATS') {
         setStats(request.stats);
         if (request.lastLead) setLastLead(request.lastLead);
+      } else if (request.action === 'CAMPAIGN_FINISHED') {
+        showToast(`Campaign finished! Extracted ${request.totalLeads || 0} leads.`, 'success');
       }
     };
     
@@ -136,10 +152,6 @@ function App() {
       }
     }
   }, []);
-
-  const showToast = (message, type = 'success') => {
-    setToast({ id: Date.now(), message, type });
-  };
 
   const toggleSetting = (key, value = null) => {
     const newSettings = { ...settings, [key]: value !== null ? value : !settings[key] }
@@ -214,8 +226,50 @@ function App() {
     });
   };
 
+  const handleStartCampaign = () => {
+    if (typeof chrome === 'undefined' || !chrome.tabs) return;
+    chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
+      const activeTab = tabs[0];
+      if (!activeTab?.id) {
+        showToast('Open Google Maps in an active tab to launch campaign', 'error');
+        return;
+      }
+
+      chrome.runtime.sendMessage({
+        action: 'START_CAMPAIGN',
+        queue: campaignState.queue,
+        tabId: activeTab.id
+      }, (res) => {
+        if (res?.success) {
+          showToast('Deep Search Campaign launched!', 'success');
+        } else {
+          showToast(res?.error || 'Failed to start campaign', 'error');
+        }
+      });
+    });
+  };
+
+  const handleStopCampaign = () => {
+    chrome.runtime.sendMessage({ action: 'STOP_CAMPAIGN' });
+    showToast('Campaign stopped', 'info');
+  };
+
+  const handleSkipQuery = () => {
+    chrome.runtime.sendMessage({ action: 'SKIP_CAMPAIGN_QUERY' });
+    showToast('Skipping to next query...', 'info');
+  };
+
+  const handleUpdateQueue = (newQueue) => {
+    const updated = { ...campaignState, queue: newQueue };
+    setCampaignState(updated);
+    if (typeof chrome !== 'undefined' && chrome.storage) {
+      chrome.storage.local.set({ campaignState: updated });
+    }
+  };
+
   const navTabs = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutGrid },
+    { id: 'campaigns', label: 'Campaigns', icon: Layers, badge: campaignState.queue.length > 0 ? campaignState.queue.length : undefined, dot: campaignState.active },
     { id: 'data', label: 'Leads', icon: Table2, badge: allLeads.length },
     { id: 'monitor', label: 'Monitor', icon: Activity, dot: isScraping },
     { id: 'history', label: 'History', icon: HistoryIcon },
@@ -256,7 +310,7 @@ function App() {
                   {tab.badge}
                 </span>
               )}
-              {tab.dot && isScraping && (
+              {tab.dot && (isScraping || campaignState.active) && (
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
               )}
             </button>
@@ -278,6 +332,16 @@ function App() {
               hasLeads={stats.leads > 0}
             />
           </div>
+        )}
+        {currentTab === 'campaigns' && (
+          <Campaigns
+            campaignState={campaignState}
+            onStartCampaign={handleStartCampaign}
+            onStopCampaign={handleStopCampaign}
+            onSkipQuery={handleSkipQuery}
+            onUpdateQueue={handleUpdateQueue}
+            darkMode={darkMode}
+          />
         )}
         {currentTab === 'settings' && (
           <div className={`h-full overflow-y-auto tab-content ${darkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>

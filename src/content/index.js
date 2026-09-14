@@ -6,6 +6,9 @@ let isScraping = false;
 let scrapedLeads = new Map();
 let startTime = null;
 let pageCount = 1;
+let isCampaignMode = false;
+let queryLeadsCount = 0;
+let consecutiveNoNewLeads = 0;
 
 // Context liveness guard to prevent "Extension context invalidated" errors
 const isContextValid = () => {
@@ -19,13 +22,32 @@ const isContextValid = () => {
 // Load existing state safely
 if (isContextValid()) {
     try {
-        chrome.storage.local.get(['allLeads', 'isScraping', 'stats'], (result) => {
+        chrome.storage.local.get(['allLeads', 'isScraping', 'stats', 'campaignState'], (result) => {
             if (chrome.runtime?.lastError || !isContextValid()) return;
             if (result?.allLeads && Array.isArray(result.allLeads)) {
                 result.allLeads.forEach(lead => {
                     const key = lead.url || lead.name;
                     if (key) scrapedLeads.set(key, lead);
                 });
+            }
+
+            // Auto-start scraping if page loaded as part of an active campaign
+            if (result?.campaignState?.active) {
+                isCampaignMode = true;
+                setTimeout(() => {
+                    if (!isScraping && isContextValid()) {
+                        chrome.storage.local.get(['campaignState', 'settings'], (res) => {
+                            if (res.campaignState?.active) {
+                                isScraping = true;
+                                isCampaignMode = true;
+                                queryLeadsCount = 0;
+                                consecutiveNoNewLeads = 0;
+                                startTime = Date.now();
+                                scrapeLoop({ ...activeSettings, ...(res.settings || {}) });
+                            }
+                        });
+                    }
+                }, 3500);
             }
         });
     } catch {
@@ -66,6 +88,11 @@ if (isContextValid()) {
                 if (request.settings) {
                     activeSettings = { ...activeSettings, ...request.settings };
                 }
+                if (request.isCampaign !== undefined) {
+                    isCampaignMode = Boolean(request.isCampaign);
+                }
+                queryLeadsCount = 0;
+                consecutiveNoNewLeads = 0;
                 if (!isScraping) {
                     isScraping = true;
                     startTime = Date.now();
@@ -101,6 +128,7 @@ if (isContextValid()) {
 
 function stopScraping() {
     isScraping = false;
+    isCampaignMode = false;
     safeSendMessage({ action: 'SCRAPING_STOPPED' });
     if (isContextValid()) {
         try {
@@ -268,6 +296,13 @@ async function scrapeLoop(initialSettings) {
             }
         });
 
+        if (newlyFoundLeads.length > 0) {
+            queryLeadsCount += newlyFoundLeads.length;
+            consecutiveNoNewLeads = 0;
+        } else {
+            consecutiveNoNewLeads++;
+        }
+
         if (!isContextValid()) {
             isScraping = false;
             break;
@@ -284,13 +319,30 @@ async function scrapeLoop(initialSettings) {
             break;
         }
 
-        if (activeSettings.autoNextPage && hasReachedEnd()) {
+        const endReached = hasReachedEnd();
+        if (activeSettings.autoNextPage && endReached) {
             await sleep(2000);
             const clicked = clickNext();
             if (clicked) {
                 pageCount++;
+                consecutiveNoNewLeads = 0;
                 await sleep(5000);
+                continue;
             }
+        }
+
+        // Campaign mode: If current search query is exhausted, notify background to advance
+        if (isCampaignMode && (endReached || consecutiveNoNewLeads >= 7)) {
+            safeSendMessage({
+                action: 'LOG_MONITOR',
+                message: `[CAMPAIGN] Query exhausted (${queryLeadsCount} leads gathered). Advancing to next target...`
+            });
+            safeSendMessage({
+                action: 'CAMPAIGN_QUERY_FINISHED',
+                leadsFound: queryLeadsCount
+            });
+            isScraping = false;
+            break;
         }
 
         await sleep(1000 + Math.random() * 500);

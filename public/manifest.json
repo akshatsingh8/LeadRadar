@@ -5,6 +5,7 @@
   "description": "Discover Business Leads Instantly | Extract unlimited leads from Google Maps with one click. Powered by brandspiritlabs.com",
   "permissions": [
     "activeTab",
+    "tabs",
     "scripting",
     "storage",
     "sidePanel",

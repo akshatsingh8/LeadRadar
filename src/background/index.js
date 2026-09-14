@@ -23,8 +23,152 @@ const MODEL_CONFIG = {
 // Track already buffered/processed leads to avoid duplicates
 let processedLeadsGlobal = new Set();
 
+// ---------------- CAMPAIGN QUEUE STATE ----------------
+let campaignState = {
+    active: false,
+    queue: [],
+    currentIndex: 0,
+    tabId: null,
+    totalLeadsCollected: 0
+};
+
+// Initialize campaignState from local storage
+chrome.storage.local.get(['campaignState'], (result) => {
+    if (result.campaignState) {
+        campaignState = { ...campaignState, ...result.campaignState };
+    }
+});
+
+function advanceCampaignQuery(wasSkipped = false) {
+    if (!campaignState.active) return;
+
+    if (wasSkipped && campaignState.queue[campaignState.currentIndex]) {
+        campaignState.queue[campaignState.currentIndex].status = 'skipped';
+    }
+
+    const nextIndex = campaignState.currentIndex + 1;
+    if (nextIndex < campaignState.queue.length) {
+        campaignState.currentIndex = nextIndex;
+        campaignState.queue[nextIndex].status = 'running';
+        chrome.storage.local.set({ campaignState });
+
+        const nextQuery = campaignState.queue[nextIndex].query;
+        const targetUrl = `https://www.google.com/maps/search/${encodeURIComponent(nextQuery)}/`;
+
+        chrome.runtime.sendMessage({
+            action: 'LOG_MONITOR',
+            message: `[CAMPAIGN] Advancing to query ${nextIndex + 1}/${campaignState.queue.length}: "${nextQuery}"`
+        }).catch(() => {});
+
+        if (campaignState.tabId) {
+            chrome.tabs.update(campaignState.tabId, { url: targetUrl });
+        }
+    } else {
+        // Campaign Complete!
+        campaignState.active = false;
+        campaignState.status = 'completed';
+        chrome.storage.local.set({ campaignState });
+
+        chrome.runtime.sendMessage({
+            action: 'LOG_MONITOR',
+            message: `[CAMPAIGN] Complete! Scraped across all ${campaignState.queue.length} queries.`
+        }).catch(() => {});
+
+        chrome.runtime.sendMessage({
+            action: 'CAMPAIGN_FINISHED',
+            totalLeads: campaignState.totalLeadsCollected
+        }).catch(() => {});
+    }
+}
+
+// Auto-trigger scraping when Maps finishes loading during a campaign
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (campaignState.active && tabId === campaignState.tabId && changeInfo.status === 'complete') {
+        if (tab.url && tab.url.includes('google.com/maps')) {
+            setTimeout(() => {
+                if (campaignState.active) {
+                    chrome.storage.local.get(['settings'], (storage) => {
+                        const settings = storage.settings || {};
+                        chrome.tabs.sendMessage(tabId, {
+                            action: 'START_SCRAPING',
+                            settings,
+                            isCampaign: true,
+                            queryIndex: campaignState.currentIndex
+                        }).catch(() => {});
+                    });
+                }
+            }, 3500);
+        }
+    }
+});
+
 // ---------------- MESSAGE LISTENERS ----------------
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === 'START_CAMPAIGN') {
+        const { queue, tabId } = request;
+        if (!queue || queue.length === 0) {
+            sendResponse({ success: false, error: 'Queue is empty' });
+            return true;
+        }
+
+        campaignState = {
+            active: true,
+            queue: queue.map((item, idx) => ({
+                ...item,
+                status: idx === 0 ? 'running' : 'pending'
+            })),
+            currentIndex: 0,
+            tabId: tabId,
+            totalLeadsCollected: 0
+        };
+
+        chrome.storage.local.set({ campaignState });
+
+        const firstQuery = campaignState.queue[0].query;
+        const targetUrl = `https://www.google.com/maps/search/${encodeURIComponent(firstQuery)}/`;
+        
+        chrome.tabs.update(tabId, { url: targetUrl }, () => {
+            sendResponse({ success: true });
+        });
+        return true;
+    }
+
+    if (request.action === 'STOP_CAMPAIGN') {
+        campaignState.active = false;
+        if (campaignState.queue && campaignState.queue[campaignState.currentIndex]) {
+            campaignState.queue[campaignState.currentIndex].status = 'stopped';
+        }
+        chrome.storage.local.set({ campaignState });
+        if (campaignState.tabId) {
+            chrome.tabs.sendMessage(campaignState.tabId, { action: 'STOP_SCRAPING' }).catch(() => {});
+        }
+        sendResponse({ success: true });
+        return true;
+    }
+
+    if (request.action === 'SKIP_CAMPAIGN_QUERY') {
+        advanceCampaignQuery(true);
+        sendResponse({ success: true });
+        return true;
+    }
+
+    if (request.action === 'CAMPAIGN_QUERY_FINISHED') {
+        const { leadsFound } = request;
+        if (campaignState.active && campaignState.queue[campaignState.currentIndex]) {
+            campaignState.queue[campaignState.currentIndex].status = 'completed';
+            campaignState.queue[campaignState.currentIndex].leadsFound = leadsFound || 0;
+            campaignState.totalLeadsCollected += (leadsFound || 0);
+            advanceCampaignQuery(false);
+        }
+        sendResponse({ success: true });
+        return true;
+    }
+
+    if (request.action === 'GET_CAMPAIGN_STATE') {
+        sendResponse({ campaignState });
+        return true;
+    }
+
     if (request.action === 'AI_PARSE_LEAD') {
         const { lead, apiKey, aiModel } = request;
         chrome.storage.local.get(['apiKey', 'settings'], (storage) => {
