@@ -121,7 +121,7 @@ function App() {
       if (!activeTab?.id) return;
 
       try {
-        chrome.tabs.sendMessage(activeTab.id, { action, ...data }, (response) => {
+        chrome.tabs.sendMessage(activeTab.id, { action, ...data }, () => {
           const lastErr = chrome.runtime.lastError;
           if (lastErr) {
             const msg = lastErr.message || '';
@@ -150,17 +150,18 @@ function App() {
   }
 
   const startScraping = () => {
-    // Check for API Key
-    if (!settings.apiKey) {
-      showToast('Gemini API Key missing! Smart Mode disabled.', 'error');
+    const isOR = settings.aiProvider === 'openrouter';
+    const activeKey = isOR ? settings.openRouterKey : settings.apiKey;
+    if (!activeKey) {
+      showToast(`${isOR ? 'OpenRouter' : 'Gemini'} API Key missing! Smart Mode disabled.`, 'error');
       setLogs(prev => [...prev, { time: new Date().toLocaleTimeString(), message: "⚠️ Warning: AI Key missing. Using legacy extraction (less accurate)." }]);
     }
 
-    setIsScraping(true)
+    setIsScraping(true);
     setLogs(prev => [...prev, { time: new Date().toLocaleTimeString(), message: "Scraping session started. Warming up the engine..." }]);
     safeSendMessage('START_SCRAPING', { settings });
-    showToast(`Scraping started with ${settings.aiModel || 'Gemini'}!`, 'success');
-  }
+    showToast(`Scraping started with ${settings.aiModel || (isOR ? 'OpenRouter' : 'Gemini')}!`, 'success');
+  };
 
   const stopScraping = () => {
     setIsScraping(false)
@@ -196,10 +197,10 @@ function App() {
     const text = leadsToCopy.map(l => `${l.name}\t${l.phone || ''}\t${l.website || ''}`).join('\n');
     navigator.clipboard.writeText(text).then(() => {
       showToast(`Copied ${leadsToCopy.length} rows!`, 'success');
-    }).catch(err => {
+    }).catch(() => {
       showToast('Failed to copy.', 'error');
     });
-  }
+  };
 
   return (
     <div className={`w-full h-screen flex flex-col font-sans ${darkMode ? 'dark bg-gray-900 text-white' : 'bg-white text-gray-800'}`}>
@@ -242,6 +243,7 @@ function App() {
         {currentTab === 'dashboard' && (
           <div className={`h-full flex flex-col overflow-y-auto tab-content ${darkMode ? 'bg-gray-900' : 'bg-white'}`}>
             <StatsDashboard stats={stats} />
+            <ResultsPreview lastLead={lastLead} />
             <Controls
               isScraping={isScraping}
               onStart={startScraping}
@@ -267,6 +269,7 @@ function App() {
             leads={allLeads}
             onClear={handleClearData}
             onCopy={handleCopyClipboard}
+            onExport={exportData}
           />
         )}
         {currentTab === 'monitor' && (

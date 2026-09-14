@@ -1,7 +1,21 @@
 import React, { useState } from 'react';
-import { ArrowUpDown, Search, Copy, Trash2, Mail, Linkedin, Globe, MapPin, Phone } from 'lucide-react';
+import { ArrowUpDown, Search, Copy, Trash2, Mail, Linkedin, Globe, MapPin, Phone, Download } from 'lucide-react';
 
-export default function ResultsTable({ leads, onCopy, onClear }) {
+function SortHeader({ field, sortField, onSort, children }) {
+    return (
+        <th
+            className="p-3 font-semibold border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors select-none text-left min-w-[120px]"
+            onClick={() => onSort(field)}
+        >
+            <div className="flex items-center gap-1">
+                {children}
+                <ArrowUpDown size={12} className={`opacity-50 ${sortField === field ? 'opacity-100 text-blue-500' : ''}`} />
+            </div>
+        </th>
+    );
+}
+
+export default function ResultsTable({ leads, onCopy, onClear, onExport }) {
     const [filter, setFilter] = useState('');
     const [sortField, setSortField] = useState(null);
     const [sortDirection, setSortDirection] = useState('asc');
@@ -37,18 +51,6 @@ export default function ResultsTable({ leads, onCopy, onClear }) {
             : String(bVal).localeCompare(String(aVal));
     });
 
-    const SortHeader = ({ field, children }) => (
-        <th
-            className="p-3 font-semibold border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors select-none text-left min-w-[120px]"
-            onClick={() => handleSort(field)}
-        >
-            <div className="flex items-center gap-1">
-                {children}
-                <ArrowUpDown size={12} className={`opacity-50 ${sortField === field ? 'opacity-100 text-blue-500' : ''}`} />
-            </div>
-        </th>
-    );
-
     return (
         <div className="flex flex-col h-full bg-white dark:bg-gray-900 overflow-hidden">
             {/* Toolbar */}
@@ -64,16 +66,28 @@ export default function ResultsTable({ leads, onCopy, onClear }) {
                     />
                 </div>
                 <div className="flex gap-2">
+                    {onExport && (
+                        <button
+                            onClick={onExport}
+                            disabled={sortedLeads.length === 0}
+                            className="px-3 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md shadow-sm transition-colors flex items-center gap-2"
+                            title="Export to CSV"
+                        >
+                            <Download size={16} /> Export CSV
+                        </button>
+                    )}
                     <button
                         onClick={() => onCopy(sortedLeads)}
-                        className="px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md shadow-sm transition-colors flex items-center gap-2"
+                        disabled={sortedLeads.length === 0}
+                        className="px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md shadow-sm transition-colors flex items-center gap-2"
                         title="Copy to Clipboard"
                     >
                         <Copy size={16} /> Copy
                     </button>
                     <button
                         onClick={onClear}
-                        className="px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-md border border-red-200 dark:border-red-900/50 transition-colors flex items-center gap-2"
+                        disabled={leads.length === 0}
+                        className="px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 disabled:opacity-50 disabled:cursor-not-allowed rounded-md border border-red-200 dark:border-red-900/50 transition-colors flex items-center gap-2"
                         title="Clear Data"
                     >
                         <Trash2 size={16} /> Clear
@@ -86,13 +100,13 @@ export default function ResultsTable({ leads, onCopy, onClear }) {
                 <table className="w-full text-sm border-collapse text-left whitespace-nowrap">
                     <thead className="bg-white dark:bg-gray-950 sticky top-0 shadow-sm text-gray-700 dark:text-gray-300 z-10">
                         <tr>
-                            <SortHeader field="name">Business Name</SortHeader>
-                            <SortHeader field="city">Location</SortHeader>
-                            <SortHeader field="category">Category</SortHeader>
-                            <SortHeader field="phone">Contact</SortHeader>
-                            <SortHeader field="email">Email</SortHeader>
-                            <SortHeader field="websitePhone">Website Phone</SortHeader>
-                            <SortHeader field="rating">Rating</SortHeader>
+                            <SortHeader field="name" sortField={sortField} onSort={handleSort}>Business Name</SortHeader>
+                            <SortHeader field="city" sortField={sortField} onSort={handleSort}>Location</SortHeader>
+                            <SortHeader field="category" sortField={sortField} onSort={handleSort}>Category</SortHeader>
+                            <SortHeader field="phone" sortField={sortField} onSort={handleSort}>Contact</SortHeader>
+                            <SortHeader field="email" sortField={sortField} onSort={handleSort}>Email</SortHeader>
+                            <SortHeader field="websitePhone" sortField={sortField} onSort={handleSort}>Website Phone</SortHeader>
+                            <SortHeader field="rating" sortField={sortField} onSort={handleSort}>Rating</SortHeader>
                             <th className="p-3 font-semibold border-b border-gray-200 dark:border-gray-700 text-left">Socials & Web</th>
                         </tr>
                     </thead>
@@ -119,13 +133,15 @@ export default function ResultsTable({ leads, onCopy, onClear }) {
                                     </div>
                                 </td>
                                 <td className="p-3 max-w-[180px] truncate text-gray-700 dark:text-gray-300">
-                                    {lead.email ? (
+                                    {lead.email || lead.emails ? (
                                         <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
                                             <Mail size={14} /> 
-                                            <span className="truncate font-semibold">{lead.email}</span>
+                                            <span className="truncate font-semibold">{lead.email || lead.emails}</span>
                                         </div>
+                                    ) : lead.website ? (
+                                        <span className="text-gray-400 italic text-[10px]">{lead.enriched ? 'Not found' : 'Searching...'}</span>
                                     ) : (
-                                        <span className="text-gray-400 italic text-[10px]">Searching...</span>
+                                        <span className="text-gray-400 text-xs">-</span>
                                     )}
                                 </td>
                                 <td className="p-3 truncate text-gray-700 dark:text-gray-300">
@@ -142,7 +158,9 @@ export default function ResultsTable({ leads, onCopy, onClear }) {
                                     {lead.rating ? (
                                         <div className="flex items-center gap-1 font-bold text-gray-900 dark:text-gray-100">
                                             <span>⭐ {lead.rating}</span>
-                                            <span className="text-[10px] text-gray-500 font-normal">({lead.reviews})</span>
+                                            {lead.reviews ? (
+                                                <span className="text-[10px] text-gray-500 font-normal">({lead.reviews})</span>
+                                            ) : null}
                                         </div>
                                     ) : '-'}
                                 </td>
@@ -166,6 +184,11 @@ export default function ResultsTable({ leads, onCopy, onClear }) {
                                         {lead.instagram && (
                                             <a href={lead.instagram} target="_blank" rel="noreferrer" title="Instagram Found" className="text-gray-400 hover:text-pink-600 transition-colors">
                                                 <div className="w-[18px] h-[18px] flex items-center justify-center font-bold">ig</div>
+                                            </a>
+                                        )}
+                                        {(lead.twitter || lead.twitter_x) && (
+                                            <a href={lead.twitter || lead.twitter_x} target="_blank" rel="noreferrer" title="X/Twitter Found" className="text-gray-400 hover:text-blue-400 transition-colors">
+                                                <div className="w-[18px] h-[18px] flex items-center justify-center font-bold text-xs">𝕏</div>
                                             </a>
                                         )}
                                     </div>

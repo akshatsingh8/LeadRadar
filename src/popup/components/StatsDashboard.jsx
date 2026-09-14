@@ -38,11 +38,12 @@ export default function StatsDashboard({ stats }) {
     );
 }
 
-function StatCard({ label, value, icon: Icon, lightBg, lightBorder, lightText, lightIcon, darkColor }) {
+function StatCard({ label, value, icon, lightBg, lightBorder, lightText, lightIcon, darkColor }) {
+    const IconComponent = icon;
     return (
         <div className={`rounded-xl p-3 text-center transition-all hover:scale-105 hover:shadow-lg border-2 ${lightBg} ${lightBorder} dark:${darkColor} dark:border`}>
             <div className="flex justify-center mb-1">
-                <Icon size={18} className={`${lightIcon} dark:opacity-70`} />
+                {IconComponent && <IconComponent size={18} className={`${lightIcon} dark:opacity-70`} />}
             </div>
             <p className={`text-xs font-bold uppercase tracking-wide ${lightText} dark:opacity-90`}>{label}</p>
             <p className={`text-2xl font-extrabold ${lightText}`}>{value}</p>

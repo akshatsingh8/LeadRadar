@@ -1,7 +1,6 @@
 import { extractLeads } from './scraper';
 import { scrollFeed, hasReachedEnd } from './scroll';
 import { clickNext } from './navigation';
-import { convertToCSV, downloadCSV } from './csv';
 
 let isScraping = false;
 let scrapedLeads = new Map();
@@ -136,7 +135,9 @@ async function syncData(newlyFoundLeads = []) {
             action: 'UPDATE_STATS',
             stats: stats
         });
-    } catch(e){}
+    } catch {
+        // Optional catch binding
+    }
 }
 
 async function scrapeLoop(settings) {
@@ -151,6 +152,8 @@ async function scrapeLoop(settings) {
     // Get API Key and Model for AI mode
     const storage = await new Promise(r => chrome.storage.local.get(['apiKey', 'settings'], r));
     const apiKey = storage.apiKey;
+    const orKey = storage.settings?.openRouterKey;
+    const hasAIKey = !!apiKey || !!orKey;
     const aiModel = storage.settings?.aiModel || 'gemini-3.1-flash-lite-preview';
 
     while (isScraping) {
@@ -173,7 +176,7 @@ async function scrapeLoop(settings) {
                 newlyFoundLeads.push(lead);
 
                 // 1. Trigger AI Smart Batching (Fire and Forget)
-                if (apiKey) {
+                if (hasAIKey) {
                     safeSendMessage({ action: 'AI_PARSE_LEAD', lead, apiKey, aiModel });
                 }
 

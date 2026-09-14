@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./public/icons/icon128.png" alt="LeadRadar Logo" width="128" />
+  <img src="./public/icon-128.png" alt="LeadRadar Logo" width="128" />
   <h1>LeadRadar Pro</h1>
   <p><strong>A Real-time Google Maps Lead Extraction & Enrichment Engine</strong></p>
 
