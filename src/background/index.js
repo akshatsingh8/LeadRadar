@@ -1,5 +1,17 @@
 // LeadRadar Pro - Background Service Worker
 
+// Global suppression of unhandled extension rejections (e.g. disconnected ports or tabs)
+self.addEventListener('unhandledrejection', (event) => {
+  const msg = event?.reason?.message || String(event?.reason || '');
+  if (
+    msg.includes('context invalidated') ||
+    msg.includes('Receiving end does not exist') ||
+    msg.includes('Could not establish connection')
+  ) {
+    event.preventDefault();
+  }
+});
+
 // 1. Side Panel Management
 chrome.action.onClicked.addListener((tab) => {
   chrome.sidePanel.open({ windowId: tab.windowId }).catch(console.error);

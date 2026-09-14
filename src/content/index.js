@@ -9,55 +9,91 @@ let pageCount = 1;
 let isCampaignMode = false;
 let queryLeadsCount = 0;
 let consecutiveNoNewLeads = 0;
+let contextDead = false;
+
+// Global rejection interceptor: Prevents Chromium from logging unhandled extension errors
+if (typeof window !== 'undefined') {
+    window.addEventListener('unhandledrejection', (event) => {
+        const msg = event?.reason?.message || String(event?.reason || '');
+        if (
+            msg.includes('context invalidated') ||
+            msg.includes('Receiving end does not exist') ||
+            msg.includes('Could not establish connection')
+        ) {
+            contextDead = true;
+            isScraping = false;
+            event.preventDefault();
+        }
+    });
+}
+
+const markContextDead = () => {
+    contextDead = true;
+    isScraping = false;
+};
 
 // Context liveness guard to prevent "Extension context invalidated" errors
 const isContextValid = () => {
+    if (contextDead) return false;
     try {
-        return typeof chrome !== 'undefined' && Boolean(chrome?.runtime?.id);
+        if (typeof chrome === 'undefined' || !chrome?.runtime?.id) {
+            markContextDead();
+            return false;
+        }
+        return true;
     } catch {
+        markContextDead();
         return false;
     }
 };
 
-// Load existing state safely
-if (isContextValid()) {
+// Safe storage wrapper that catches all promise rejections
+const safeStorageGet = (keys) => {
+    if (!isContextValid()) return Promise.resolve({});
     try {
-        chrome.storage.local.get(['allLeads', 'isScraping', 'stats', 'campaignState'], (result) => {
-            if (chrome.runtime?.lastError || !isContextValid()) return;
-            if (result?.allLeads && Array.isArray(result.allLeads)) {
-                result.allLeads.forEach(lead => {
-                    const key = lead.url || lead.name;
-                    if (key) scrapedLeads.set(key, lead);
-                });
-            }
-
-            // Auto-start scraping if page loaded as part of an active campaign
-            if (result?.campaignState?.active) {
-                isCampaignMode = true;
-                setTimeout(() => {
-                    try {
-                        if (!isContextValid() || isScraping) return;
-                        chrome.storage.local.get(['campaignState', 'settings'], (res) => {
-                            if (!isContextValid()) return;
-                            if (res?.campaignState?.active && !isScraping) {
-                                isScraping = true;
-                                isCampaignMode = true;
-                                queryLeadsCount = 0;
-                                consecutiveNoNewLeads = 0;
-                                startTime = Date.now();
-                                scrapeLoop({ ...activeSettings, ...(res?.settings || {}) });
-                            }
-                        });
-                    } catch {
-                        isScraping = false;
+        const p = chrome.storage.local.get(keys);
+        if (p && typeof p.then === 'function') {
+            return p.catch(() => {
+                markContextDead();
+                return {};
+            });
+        }
+        return new Promise((resolve) => {
+            try {
+                chrome.storage.local.get(keys, (res) => {
+                    if (chrome.runtime?.lastError) {
+                        markContextDead();
+                        resolve({});
+                    } else {
+                        resolve(res || {});
                     }
-                }, 3500);
+                });
+            } catch {
+                markContextDead();
+                resolve({});
             }
         });
     } catch {
-        // Suppress initial context check failure
+        markContextDead();
+        return Promise.resolve({});
     }
-}
+};
+
+const safeStorageSet = (items) => {
+    if (!isContextValid()) return Promise.resolve();
+    try {
+        const p = chrome.storage.local.set(items);
+        if (p && typeof p.then === 'function') {
+            return p.catch(() => {
+                markContextDead();
+            });
+        }
+        return Promise.resolve();
+    } catch {
+        markContextDead();
+        return Promise.resolve();
+    }
+};
 
 const safeSendMessage = (message, callback) => {
     if (!isContextValid()) {
@@ -70,17 +106,49 @@ const safeSendMessage = (message, callback) => {
             p.then((res) => {
                 if (callback) callback(res);
             }).catch(() => {
-                isScraping = false;
+                markContextDead();
             });
         }
         return true;
     } catch {
-        isScraping = false;
+        markContextDead();
         return false;
     }
 };
 
 let activeSettings = { autoScroll: true, autoNextPage: true, humanBehavior: true };
+
+// Load existing state safely
+if (isContextValid()) {
+    safeStorageGet(['allLeads', 'isScraping', 'stats', 'campaignState']).then((result) => {
+        if (!isContextValid()) return;
+        if (result?.allLeads && Array.isArray(result.allLeads)) {
+            result.allLeads.forEach(lead => {
+                const key = lead.url || lead.name;
+                if (key) scrapedLeads.set(key, lead);
+            });
+        }
+
+        // Auto-start scraping if page loaded as part of an active campaign
+        if (result?.campaignState?.active) {
+            isCampaignMode = true;
+            setTimeout(() => {
+                if (!isContextValid() || isScraping) return;
+                safeStorageGet(['campaignState', 'settings']).then((res) => {
+                    if (!isContextValid()) return;
+                    if (res?.campaignState?.active && !isScraping) {
+                        isScraping = true;
+                        isCampaignMode = true;
+                        queryLeadsCount = 0;
+                        consecutiveNoNewLeads = 0;
+                        startTime = Date.now();
+                        scrapeLoop({ ...activeSettings, ...(res?.settings || {}) });
+                    }
+                });
+            }, 3500);
+        }
+    });
+}
 
 if (isContextValid()) {
     try {
@@ -131,44 +199,34 @@ function stopScraping() {
     isScraping = false;
     isCampaignMode = false;
     safeSendMessage({ action: 'SCRAPING_STOPPED' });
-    if (isContextValid()) {
-        try {
-            chrome.storage.local.set({ isScraping: false });
-        } catch {}
-    }
+    safeStorageSet({ isScraping: false });
     saveHistory();
 }
 
 function saveHistory() {
     if (!isContextValid()) return;
-    try {
-        chrome.storage.local.get(['history'], (result) => {
-            if (chrome.runtime?.lastError || !isContextValid()) return;
-            const history = result?.history || [];
-            const leads = Array.from(scrapedLeads.values());
-            if (leads.length === 0) return;
+    safeStorageGet(['history']).then((result) => {
+        if (!isContextValid()) return;
+        const history = result?.history || [];
+        const leads = Array.from(scrapedLeads.values());
+        if (leads.length === 0) return;
 
-            const keyword = leads[0].keyword || "Unknown";
-            const entry = {
-                timestamp: Date.now(),
-                keyword: keyword,
-                count: leads.length
-            };
+        const keyword = leads[0].keyword || "Unknown";
+        const entry = {
+            timestamp: Date.now(),
+            keyword: keyword,
+            count: leads.length
+        };
 
-            const last = history[history.length - 1];
-            if (last && last.keyword === keyword && last.count === entry.count && (entry.timestamp - last.timestamp < 60000)) {
-                history[history.length - 1] = entry;
-            } else {
-                history.push(entry);
-            }
+        const last = history[history.length - 1];
+        if (last && last.keyword === keyword && last.count === entry.count && (entry.timestamp - last.timestamp < 60000)) {
+            history[history.length - 1] = entry;
+        } else {
+            history.push(entry);
+        }
 
-            if (isContextValid()) {
-                try {
-                    chrome.storage.local.set({ history: history });
-                } catch {}
-            }
-        });
-    } catch {}
+        safeStorageSet({ history: history });
+    });
 }
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -179,7 +237,6 @@ function formatTime(ms) {
     const s = seconds % 60;
     return `${m}:${s < 10 ? '0' : ''}${s}`;
 }
-
 
 async function syncData(newlyFoundLeads = []) {
     if (!isContextValid()) {
@@ -195,17 +252,8 @@ async function syncData(newlyFoundLeads = []) {
 
     try {
         if (newlyFoundLeads.length > 0) {
-            const storage = await new Promise(r => {
-                if (!isContextValid()) return r({});
-                try {
-                    chrome.storage.local.get(['allLeads'], (res) => {
-                        if (chrome.runtime?.lastError) return r({});
-                        r(res || {});
-                    });
-                } catch {
-                    r({});
-                }
-            });
+            const storage = await safeStorageGet(['allLeads']);
+            if (!isContextValid()) return;
             let existingLeads = storage?.allLeads || [];
             
             newlyFoundLeads.forEach(lead => {
@@ -219,23 +267,15 @@ async function syncData(newlyFoundLeads = []) {
                 }
             });
 
-            if (isContextValid()) {
-                try {
-                    chrome.storage.local.set({ 
-                        allLeads: existingLeads,
-                        stats: stats
-                    });
-                } catch {}
-            }
+            await safeStorageSet({ 
+                allLeads: existingLeads,
+                stats: stats
+            });
         } else {
-            if (isContextValid()) {
-                try {
-                    chrome.storage.local.set({ stats: stats });
-                } catch {}
-            }
+            await safeStorageSet({ stats: stats });
         }
     } catch {
-        isScraping = false;
+        markContextDead();
     }
 
     safeSendMessage({
@@ -248,11 +288,7 @@ async function scrapeLoop(initialSettings) {
     if (initialSettings) {
         activeSettings = { ...activeSettings, ...initialSettings };
     }
-    if (isContextValid()) {
-        try {
-            chrome.storage.local.set({ isScraping: true });
-        } catch {}
-    }
+    await safeStorageSet({ isScraping: true });
     
     // Send initial heartbeat log
     safeSendMessage({

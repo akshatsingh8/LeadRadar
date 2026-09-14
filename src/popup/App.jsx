@@ -88,6 +88,23 @@ function App() {
   };
 
   useEffect(() => {
+    const handleUnhandledRejection = (event) => {
+      const msg = event?.reason?.message || String(event?.reason || '');
+      if (
+        msg.includes('context invalidated') ||
+        msg.includes('Could not establish connection') ||
+        msg.includes('Receiving end does not exist')
+      ) {
+        event.preventDefault();
+      }
+    };
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    return () => {
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, []);
+
+  useEffect(() => {
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
       chrome.storage.local.get(['stats', 'settings', 'isScraping', 'lastLead', 'allLeads', 'history', 'darkMode', 'apiKey', 'campaignState'], (result) => {
         if (result.stats) setStats(result.stats)
