@@ -35,17 +35,21 @@ if (isContextValid()) {
             if (result?.campaignState?.active) {
                 isCampaignMode = true;
                 setTimeout(() => {
-                    if (!isScraping && isContextValid()) {
+                    try {
+                        if (!isContextValid() || isScraping) return;
                         chrome.storage.local.get(['campaignState', 'settings'], (res) => {
-                            if (res.campaignState?.active) {
+                            if (!isContextValid()) return;
+                            if (res?.campaignState?.active && !isScraping) {
                                 isScraping = true;
                                 isCampaignMode = true;
                                 queryLeadsCount = 0;
                                 consecutiveNoNewLeads = 0;
                                 startTime = Date.now();
-                                scrapeLoop({ ...activeSettings, ...(res.settings || {}) });
+                                scrapeLoop({ ...activeSettings, ...(res?.settings || {}) });
                             }
                         });
+                    } catch {
+                        isScraping = false;
                     }
                 }, 3500);
             }
@@ -61,14 +65,11 @@ const safeSendMessage = (message, callback) => {
         return false;
     }
     try {
-        const p = chrome.runtime.sendMessage(message, (res) => {
-            if (chrome.runtime?.lastError) {
-                // Suppress context invalidation or closed port errors
-            }
-            if (callback) callback(res);
-        });
-        if (p && typeof p.catch === 'function') {
-            p.catch(() => {
+        const p = chrome.runtime.sendMessage(message);
+        if (p && typeof p.then === 'function') {
+            p.then((res) => {
+                if (callback) callback(res);
+            }).catch(() => {
                 isScraping = false;
             });
         }

@@ -47,36 +47,44 @@ function App() {
     if (typeof chrome === 'undefined' || !chrome.tabs) return;
 
     chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
-      const activeTab = tabs[0];
+      const activeTab = tabs?.[0];
       if (!activeTab?.id) return;
 
       try {
-        chrome.tabs.sendMessage(activeTab.id, { action, ...data }, () => {
-          const lastErr = chrome.runtime.lastError;
-          if (lastErr) {
-            const msg = lastErr.message || '';
-            
-            // Handle specific Chrome Extension lifecycle errors
-            if (msg.includes('Extension context invalidated')) {
-              showToast('System updated. Please refresh Google Maps to continue.', 'info');
-              setIsScraping(false);
-            } else if (msg.includes('Could not establish connection') || msg.includes('Receiving end does not exist')) {
-              // Only alert on START_SCRAPING, others are usually cleanup or meta-sync
-              if (action === 'START_SCRAPING') {
-                showToast('Google Maps scraper not ready. Refresh the page!', 'error');
+        const p = chrome.tabs.sendMessage(activeTab.id, { action, ...data });
+        if (p && typeof p.then === 'function') {
+          p.then(() => {})
+           .catch((err) => {
+              const msg = err?.message || '';
+              if (msg.includes('Extension context invalidated')) {
+                showToast('Extension updated. Please refresh Google Maps.', 'info');
+                setIsScraping(false);
+              } else if (msg.includes('Could not establish connection') || msg.includes('Receiving end does not exist')) {
+                if (action === 'START_SCRAPING') {
+                  showToast('Google Maps scraper not ready. Refresh the tab!', 'error');
+                }
               }
-            } else {
-              console.warn(`[LeadRadar Message Error] ${action}:`, msg);
-            }
-          }
-        });
+           });
+        }
       } catch (e) {
-        if (e.message.includes('Extension context invalidated')) {
+        if (e?.message?.includes('Extension context invalidated')) {
           showToast('Extension updated. Refreshing the page is required.', 'info');
           setIsScraping(false);
         }
       }
     });
+  };
+
+  const safeRuntimeSend = (message, callback) => {
+    if (typeof chrome === 'undefined' || !chrome.runtime?.id) return;
+    try {
+      const p = chrome.runtime.sendMessage(message);
+      if (p && typeof p.then === 'function') {
+        p.then((res) => {
+          if (callback) callback(res);
+        }).catch(() => {});
+      }
+    } catch {}
   };
 
   useEffect(() => {
@@ -235,7 +243,7 @@ function App() {
         return;
       }
 
-      chrome.runtime.sendMessage({
+      safeRuntimeSend({
         action: 'START_CAMPAIGN',
         queue: campaignState.queue,
         tabId: activeTab.id
@@ -250,12 +258,12 @@ function App() {
   };
 
   const handleStopCampaign = () => {
-    chrome.runtime.sendMessage({ action: 'STOP_CAMPAIGN' });
+    safeRuntimeSend({ action: 'STOP_CAMPAIGN' });
     showToast('Campaign stopped', 'info');
   };
 
   const handleSkipQuery = () => {
-    chrome.runtime.sendMessage({ action: 'SKIP_CAMPAIGN_QUERY' });
+    safeRuntimeSend({ action: 'SKIP_CAMPAIGN_QUERY' });
     showToast('Skipping to next query...', 'info');
   };
 

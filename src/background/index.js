@@ -23,6 +23,26 @@ const MODEL_CONFIG = {
 // Track already buffered/processed leads to avoid duplicates
 let processedLeadsGlobal = new Set();
 
+// ---------------- DEFENSIVE MESSAGE HELPERS ----------------
+function safeBroadcast(message) {
+    try {
+        const p = chrome.runtime.sendMessage(message);
+        if (p && typeof p.then === 'function') {
+            p.catch(() => {});
+        }
+    } catch {}
+}
+
+function safeSendTab(tabId, message) {
+    if (!tabId) return;
+    try {
+        const p = chrome.tabs.sendMessage(tabId, message);
+        if (p && typeof p.then === 'function') {
+            p.catch(() => {});
+        }
+    } catch {}
+}
+
 // ---------------- CAMPAIGN QUEUE STATE ----------------
 let campaignState = {
     active: false,
@@ -55,10 +75,10 @@ function advanceCampaignQuery(wasSkipped = false) {
         const nextQuery = campaignState.queue[nextIndex].query;
         const targetUrl = `https://www.google.com/maps/search/${encodeURIComponent(nextQuery)}/`;
 
-        chrome.runtime.sendMessage({
+        safeBroadcast({
             action: 'LOG_MONITOR',
             message: `[CAMPAIGN] Advancing to query ${nextIndex + 1}/${campaignState.queue.length}: "${nextQuery}"`
-        }).catch(() => {});
+        });
 
         if (campaignState.tabId) {
             chrome.tabs.update(campaignState.tabId, { url: targetUrl });
@@ -69,15 +89,15 @@ function advanceCampaignQuery(wasSkipped = false) {
         campaignState.status = 'completed';
         chrome.storage.local.set({ campaignState });
 
-        chrome.runtime.sendMessage({
+        safeBroadcast({
             action: 'LOG_MONITOR',
             message: `[CAMPAIGN] Complete! Scraped across all ${campaignState.queue.length} queries.`
-        }).catch(() => {});
+        });
 
-        chrome.runtime.sendMessage({
+        safeBroadcast({
             action: 'CAMPAIGN_FINISHED',
             totalLeads: campaignState.totalLeadsCollected
-        }).catch(() => {});
+        });
     }
 }
 
@@ -89,12 +109,12 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
                 if (campaignState.active) {
                     chrome.storage.local.get(['settings'], (storage) => {
                         const settings = storage.settings || {};
-                        chrome.tabs.sendMessage(tabId, {
+                        safeSendTab(tabId, {
                             action: 'START_SCRAPING',
                             settings,
                             isCampaign: true,
                             queryIndex: campaignState.currentIndex
-                        }).catch(() => {});
+                        });
                     });
                 }
             }, 3500);
@@ -140,7 +160,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
         chrome.storage.local.set({ campaignState });
         if (campaignState.tabId) {
-            chrome.tabs.sendMessage(campaignState.tabId, { action: 'STOP_SCRAPING' }).catch(() => {});
+            safeSendTab(campaignState.tabId, { action: 'STOP_SCRAPING' });
         }
         sendResponse({ success: true });
         return true;
@@ -326,11 +346,7 @@ RULES: Extract clean individual components (street, city, state, zip, country, p
                     }
 
                     if (response.status === 503 || response.status === 429) {
-                        try {
-                            chrome.runtime.sendMessage({ action: 'LOG_MONITOR', message: `[TIER BUSY] ${tier.model} (${response.status}). Retrying in 2s...` });
-                        } catch(e){
-                            console.debug('Log monitor notification suppressed:', e);
-                        }
+                        safeBroadcast({ action: 'LOG_MONITOR', message: `[TIER BUSY] ${tier.model} (${response.status}). Retrying in 2s...` });
                         await new Promise(r => setTimeout(r, 2000));
                         continue;
                     }
@@ -351,11 +367,7 @@ RULES: Extract clean individual components (street, city, state, zip, country, p
                         parsedLeads.forEach(lead => { if (lead.website) handleEnrichment(lead.website, lead.id); });
                         batchSuccess = true;
                         const latency = Math.round(performance.now() - startTime);
-                        try {
-                            chrome.runtime.sendMessage({ action: 'LOG_MONITOR', message: `[AI ENGINE] ${tier.model} OK | Latency: ${latency}ms | Queue: ${aiBuffer.length}` });
-                        } catch(e){
-                            console.debug('Log monitor notification suppressed:', e);
-                        }
+                        safeBroadcast({ action: 'LOG_MONITOR', message: `[AI ENGINE] ${tier.model} OK | Latency: ${latency}ms | Queue: ${aiBuffer.length}` });
                         break;
                     }
                 } catch (e) {
@@ -365,22 +377,14 @@ RULES: Extract clean individual components (street, city, state, zip, country, p
 
             if (!batchSuccess) {
                 aiBuffer.unshift(...currentBatch);
-                try {
-                    chrome.runtime.sendMessage({ action: 'LOG_MONITOR', message: `[AI COOLING] Retrying queue in 10s...` });
-                } catch(e){
-                    console.debug('Log monitor notification suppressed:', e);
-                }
+                safeBroadcast({ action: 'LOG_MONITOR', message: `[AI COOLING] Retrying queue in 10s...` });
                 await new Promise(r => setTimeout(r, 10000));
             } else {
                 await new Promise(r => setTimeout(r, 4000));
             }
         }
         
-        try {
-            chrome.runtime.sendMessage({ action: 'LOG_MONITOR', message: `[SYSTEM] Process complete. All leads in queue analyzed.` });
-        } catch(e){
-            console.debug('Log monitor notification suppressed:', e);
-        }
+        safeBroadcast({ action: 'LOG_MONITOR', message: `[SYSTEM] Process complete. All leads in queue analyzed.` });
     } finally {
         isProcessingAI = false;
     }
@@ -432,11 +436,7 @@ async function handleEnrichment(baseUrl, leadId) {
             enriched: true
         }]);
 
-        try {
-            chrome.runtime.sendMessage({ action: 'LOG_MONITOR', message: `[WEB] Enriched: ${baseUrl} (${results.emails.length} emails, phone: ${results.websitePhone || 'none'})` });
-        } catch (e) {
-            console.debug('Log monitor notification suppressed:', e);
-        }
+        safeBroadcast({ action: 'LOG_MONITOR', message: `[WEB] Enriched: ${baseUrl} (${results.emails.length} emails, phone: ${results.websitePhone || 'none'})` });
 
     } catch (error) {
         console.warn(`[WEB ERROR] ${baseUrl}:`, error.message);
