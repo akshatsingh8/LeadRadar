@@ -136,42 +136,116 @@ export const INDUSTRY_CATEGORIES = {
     ]
 };
 
+export const POPULAR_NICHES = [
+    'Plumbers',
+    'Dentists',
+    'Roofing Contractors',
+    'Real Estate Agencies',
+    'Gyms & Fitness',
+    'Restaurants & Cafes',
+    'Auto Repair',
+    'Personal Injury Lawyers',
+    'Electricians',
+    'HVAC Contractors',
+    'Solar Panel Companies',
+    'CPA & Accounting'
+];
+
 export const METRO_PRESETS = [
-    {
-        name: 'New York City (NY)',
-        zips: ['10001', '10002', '10003', '10010', '10011', '10016', '10019', '10022', '11201', '11211', '11215', '11217']
-    },
-    {
-        name: 'Los Angeles (CA)',
-        zips: ['90001', '90012', '90015', '90024', '90025', '90028', '90036', '90045', '90049', '90210', '90401', '91403']
-    },
-    {
-        name: 'Chicago (IL)',
-        zips: ['60601', '60602', '60603', '60605', '60611', '60614', '60622', '60647', '60654', '60657']
-    },
-    {
-        name: 'Houston (TX)',
-        zips: ['77002', '77004', '77006', '77007', '77008', '77019', '77024', '77056', '77057', '77079']
-    },
-    {
-        name: 'Miami (FL)',
-        zips: ['33101', '33125', '33129', '33130', '33131', '33133', '33137', '33139', '33140', '33145']
-    },
-    {
-        name: 'Dallas (TX)',
-        zips: ['75201', '75202', '75204', '75206', '75214', '75219', '75225', '75230', '75240', '75248']
-    },
-    {
-        name: 'London (UK Postcodes)',
-        zips: ['EC1', 'EC2', 'WC1', 'WC2', 'W1', 'SW1', 'SE1', 'E1', 'N1', 'NW1']
-    },
+    // India Presets
     {
         name: 'Bangalore (Commercial Hubs)',
+        flag: '🇮🇳',
+        region: 'India',
         zips: ['560001', '560004', '560010', '560025', '560034', '560037', '560038', '560041', '560043', '560066', '560071', '560078', '560100', '560102', '560103']
     },
     {
         name: 'Bangalore (Full 99 Pincodes)',
+        flag: '🇮🇳',
+        region: 'India',
         zips: ['560001', '560002', '560003', '560004', '560005', '560006', '560007', '560008', '560009', '560010', '560011', '560012', '560013', '560014', '560015', '560016', '560017', '560018', '560019', '560020', '560021', '560022', '560023', '560024', '560025', '560026', '560027', '560028', '560029', '560030', '560032', '560033', '560034', '560036', '560037', '560038', '560039', '560040', '560041', '560042', '560043', '560045', '560046', '560047', '560048', '560049', '560050', '560051', '560052', '560053', '560054', '560055', '560056', '560058', '560059', '560061', '560062', '560063', '560064', '560065', '560066', '560067', '560068', '560069', '560070', '560071', '560072', '560073', '560074', '560075', '560076', '560077', '560078', '560079', '560080', '560083', '560084', '560085', '560086', '560087', '560091', '560092', '560093', '560094', '560095', '560096', '560097', '560098', '560099', '560100', '560102', '560103', '560104', '562106', '562107', '562125', '562130', '562149', '562157']
+    },
+    {
+        name: 'Mumbai (Prime Hubs)',
+        flag: '🇮🇳',
+        region: 'India',
+        zips: ['400051', '400053', '400013', '400050', '400076', '400021', '400069', '400064', '400097', '400703', '400705', '400601']
+    },
+    {
+        name: 'Delhi NCR (Prime Hubs)',
+        flag: '🇮🇳',
+        region: 'India',
+        zips: ['110001', '110019', '110017', '110024', '110005', '110020', '122002', '122018', '201301', '201307', '201010']
+    },
+    {
+        name: 'Hyderabad (Cyber Hubs)',
+        flag: '🇮🇳',
+        region: 'India',
+        zips: ['500081', '500032', '500033', '500034', '500084', '500072', '500003', '500016']
+    },
+
+    // United States Presets
+    {
+        name: 'New York City (NY)',
+        flag: '🇺🇸',
+        region: 'US',
+        zips: ['10001', '10002', '10003', '10010', '10011', '10016', '10019', '10022', '11201', '11211', '11215', '11217']
+    },
+    {
+        name: 'Los Angeles (CA)',
+        flag: '🇺🇸',
+        region: 'US',
+        zips: ['90001', '90012', '90015', '90024', '90025', '90028', '90036', '90045', '90049', '90210', '90401', '91403']
+    },
+    {
+        name: 'Chicago (IL)',
+        flag: '🇺🇸',
+        region: 'US',
+        zips: ['60601', '60602', '60603', '60605', '60611', '60614', '60622', '60647', '60654', '60657']
+    },
+    {
+        name: 'Miami (FL)',
+        flag: '🇺🇸',
+        region: 'US',
+        zips: ['33101', '33125', '33129', '33130', '33131', '33133', '33137', '33139', '33140', '33145']
+    },
+    {
+        name: 'Dallas (TX)',
+        flag: '🇺🇸',
+        region: 'US',
+        zips: ['75201', '75202', '75204', '75206', '75214', '75219', '75225', '75230', '75240', '75248']
+    },
+    {
+        name: 'Houston (TX)',
+        flag: '🇺🇸',
+        region: 'US',
+        zips: ['77002', '77004', '77006', '77007', '77008', '77019', '77024', '77056', '77057', '77079']
+    },
+
+    // Global Metros
+    {
+        name: 'London (UK Postcodes)',
+        flag: '🇬🇧',
+        region: 'Global',
+        zips: ['EC1', 'EC2', 'WC1', 'WC2', 'W1', 'SW1', 'SE1', 'E1', 'N1', 'NW1']
+    },
+    {
+        name: 'Dubai (Prime Districts)',
+        flag: '🇦🇪',
+        region: 'Global',
+        zips: ['Downtown Dubai', 'Dubai Marina', 'Business Bay', 'Jumeirah Lakes Towers', 'DIFC', 'Deira', 'Al Barsha', 'Jumeirah']
+    },
+    {
+        name: 'Toronto (ON)',
+        flag: '🇨🇦',
+        region: 'Global',
+        zips: ['M5V', 'M5R', 'M5S', 'M4Y', 'M4W', 'M2N', 'L5B', 'M1B']
+    },
+    {
+        name: 'Sydney (NSW)',
+        flag: '🇦🇺',
+        region: 'Global',
+        zips: ['2000', '2010', '2026', '2060', '2150', '2042', '2088', '2148']
     }
 ];
 
@@ -204,7 +278,8 @@ export function expandNicheVariations(keyword = '') {
         `Local ${raw} Contractors`,
         `${raw} Specialist`,
         `${raw} Repair`,
-        `Affordable ${raw}`
+        `Affordable ${raw}`,
+        `Top Rated ${raw}`
     ];
 }
 
@@ -218,7 +293,7 @@ export function generateZipRange(startCode, count = 10) {
 
     const padLen = clean.length;
     const list = [];
-    const limit = Math.min(Math.max(1, count), 50);
+    const limit = Math.min(Math.max(1, count), 100);
 
     for (let i = 0; i < limit; i++) {
         const nextNum = num + i;
@@ -279,3 +354,41 @@ export function buildQueryMatrix(keywords = [], locations = []) {
 
     return queue;
 }
+
+/**
+ * Deduplicate queue items by query string while preserving statuses
+ */
+export function deduplicateQueue(queue = []) {
+    const seen = new Set();
+    return queue.filter(item => {
+        const normalized = item.query.trim().toLowerCase();
+        if (seen.has(normalized)) return false;
+        seen.add(normalized);
+        return true;
+    });
+}
+
+/**
+ * Reset completed / skipped items back to pending status
+ */
+export function resetQueueStatus(queue = []) {
+    return queue.map(item => ({
+        ...item,
+        status: 'pending',
+        leadsFound: 0
+    }));
+}
+
+/**
+ * Reorder an item in the queue
+ */
+export function reorderQueue(queue = [], fromIndex, toIndex) {
+    if (fromIndex < 0 || fromIndex >= queue.length || toIndex < 0 || toIndex >= queue.length) {
+        return queue;
+    }
+    const result = [...queue];
+    const [removed] = result.splice(fromIndex, 1);
+    result.splice(toIndex, 0, removed);
+    return result;
+}
+
